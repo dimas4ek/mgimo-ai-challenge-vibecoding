@@ -5,9 +5,10 @@ import { isApiError, useRequest } from "../../api";
 import { paths } from "../../app/paths";
 import { cn } from "../../lib/cn";
 import { buttonVariants, Card, CardTitle, EmptyState, ErrorState, ListSkeleton } from "../../ui";
-import { formatDateTime, requestStatusView, requestTypeLabel, timeline } from "./model";
+import { formatDateTime, requestTypeLabel } from "./model";
 import type { CreatedState } from "./NewRequestWizard";
 import { RequestStatusBadge } from "./RequestStatusBadge";
+import { RequestTimeline } from "./RequestTimeline";
 
 const backLink = (
   <Link
@@ -109,59 +110,8 @@ function RequestDetails({ request, justCreated }: { request: Request; justCreate
         <CardTitle id="request-history" className="mb-4">
           История
         </CardTitle>
-        <Timeline request={request} now={now} />
+        <RequestTimeline history={request.history} now={now} />
       </Card>
     </>
-  );
-}
-
-const dotTone = {
-  neutral: "bg-muted-foreground",
-  info: "bg-info",
-  success: "bg-success",
-  danger: "bg-danger",
-} as const;
-
-function Timeline({ request, now }: { request: Request; now: Date }) {
-  const entries = timeline(request.history);
-  return (
-    <ol className="flex flex-col">
-      {entries.map((entry, i) => {
-        const last = i === entries.length - 1;
-        const { tone } = requestStatusView(entry.status);
-        return (
-          <li key={`${entry.status}-${entry.at}`} className="relative flex gap-3 pb-5 last:pb-0">
-            {!last && (
-              <span
-                aria-hidden
-                className="absolute top-6 bottom-0 left-2 w-0.5 -translate-x-1/2 bg-border"
-              />
-            )}
-            <span
-              aria-hidden
-              className={cn(
-                "mt-1 size-4 shrink-0 rounded-full",
-                dotTone[tone as keyof typeof dotTone] ?? dotTone.neutral,
-                last && "ring-4 ring-primary-soft",
-              )}
-            />
-            <div className="flex min-w-0 flex-col gap-1">
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <RequestStatusBadge status={entry.status} />
-                <time dateTime={entry.at} className="text-xs text-muted-foreground">
-                  {formatDateTime(entry.at, now)}
-                </time>
-              </div>
-              {entry.comment && (
-                <p className="text-sm break-words">
-                  <span className="text-muted-foreground">Деканат: </span>
-                  {entry.comment}
-                </p>
-              )}
-            </div>
-          </li>
-        );
-      })}
-    </ol>
   );
 }

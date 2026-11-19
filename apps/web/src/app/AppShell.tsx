@@ -5,6 +5,7 @@ import {
   FileText,
   GraduationCap,
   House,
+  Inbox,
   type LucideIcon,
   Menu,
   Moon,
@@ -12,10 +13,13 @@ import {
   UserRound,
 } from "lucide-react";
 import { Link, NavLink, Outlet, useLocation } from "react-router";
+import { useMe } from "../api";
+import { LogoutButton } from "../features/auth/LogoutButton";
 import { UnreadBadge, UnreadCountText } from "../features/notifications/UnreadBadge";
 import { cn } from "../lib/cn";
 import { Button } from "../ui";
 import { Disclaimer, Logo } from "./brand";
+import { homeOf } from "./guards";
 import { morePaths, paths } from "./paths";
 import { useTheme } from "./theme";
 
@@ -44,18 +48,22 @@ export const secondaryNav: NavItem[] = [
   { to: paths.profile, label: "Профиль", icon: UserRound },
 ];
 
+/** Кабинет сотрудника: один раздел — очередь заявок. */
+const staffNav: NavItem[] = [{ to: paths.staff, label: "Заявки студентов", icon: Inbox }];
+
 /**
  * Навигация по роли. Студенту — его разделы, таб-бар и колокольчик. Сотруднику — только
  * «Заявки студентов» в меню, без таб-бара и колокольчика (студенческие страницы ему закрыты),
  * а выход — кнопкой в шапке, потому что вкладки «Ещё» у него нет. Пока роль неизвестна — как студенту.
  */
-export function navFor(_role: Role | undefined): {
+export function navFor(role: Role | undefined): {
   primary: NavItem[];
   secondary: NavItem[];
   /** Нижний таб-бар и колокольчик (только студент). */
   studentChrome: boolean;
 } {
-  throw new Error("not implemented");
+  if (role === "staff") return { primary: staffNav, secondary: [], studentChrome: false };
+  return { primary: primaryNav, secondary: secondaryNav, studentChrome: true };
 }
 
 function ThemeToggle() {
@@ -144,6 +152,10 @@ function TabLink({
  * Страницы рендерятся в `<Outlet />` внутри `<main id="main">`.
  */
 export function AppShell() {
+  const me = useMe();
+  const role = me.data?.role;
+  const nav = navFor(role);
+  const home = role ? homeOf(role) : paths.home;
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[16rem_1fr]">
       <a
@@ -154,40 +166,45 @@ export function AppShell() {
       </a>
 
       <aside className="sticky top-0 hidden h-dvh flex-col gap-6 border-r border-border bg-surface px-4 py-5 lg:flex">
-        <Link to={paths.home} className="rounded-md px-2" aria-label="AI High School — на главную">
+        <Link to={home} className="rounded-md px-2" aria-label="AI High School — на главную">
           <Logo />
         </Link>
         <nav aria-label="Разделы" className="flex flex-col gap-1">
-          {primaryNav.map((item) => (
+          {nav.primary.map((item) => (
             <SidebarLink key={item.to} {...item} />
           ))}
-          <div className="my-2 border-t border-border" />
-          {secondaryNav.map((item) => (
+          {nav.secondary.length > 0 && <div className="my-2 border-t border-border" />}
+          {nav.secondary.map((item) => (
             <SidebarLink key={item.to} {...item} />
           ))}
         </nav>
         <div className="mt-auto flex flex-col gap-3">
           <ThemeToggle />
+          {!nav.studentChrome && <LogoutButton variant="ghost" className="justify-start" />}
           <Disclaimer />
         </div>
       </aside>
 
       <div className="flex min-w-0 flex-col">
         <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-border bg-background/90 px-4 py-2 backdrop-blur lg:hidden">
-          <Link to={paths.home} className="rounded-md" aria-label="AI High School — на главную">
+          <Link to={home} className="rounded-md" aria-label="AI High School — на главную">
             <Logo />
           </Link>
           <div className="flex items-center">
             <ThemeToggle />
-            <Link
-              to={paths.notifications}
-              className="relative grid size-11 place-items-center rounded-md text-foreground hover:bg-muted"
-            >
-              <Bell aria-hidden className="size-5" />
-              <span className="sr-only">Уведомления</span>
-              <UnreadBadge variant="dot" className="top-0.5 right-0.5" announce={false} />
-              <UnreadCountText />
-            </Link>
+            {nav.studentChrome ? (
+              <Link
+                to={paths.notifications}
+                className="relative grid size-11 place-items-center rounded-md text-foreground hover:bg-muted"
+              >
+                <Bell aria-hidden className="size-5" />
+                <span className="sr-only">Уведомления</span>
+                <UnreadBadge variant="dot" className="top-0.5 right-0.5" announce={false} />
+                <UnreadCountText />
+              </Link>
+            ) : (
+              <LogoutButton variant="ghost" size="sm" />
+            )}
           </div>
         </header>
 
@@ -199,20 +216,27 @@ export function AppShell() {
           <Outlet />
         </main>
 
-        <footer className="px-4 pb-[calc(var(--spacing-tabbar)+1rem)] text-center lg:hidden">
+        <footer
+          className={cn(
+            "px-4 text-center lg:hidden",
+            nav.studentChrome ? "pb-[calc(var(--spacing-tabbar)+1rem)]" : "pb-6",
+          )}
+        >
           <Disclaimer />
         </footer>
       </div>
 
-      <nav
-        aria-label="Разделы"
-        className="fixed inset-x-0 bottom-0 z-40 flex h-tabbar items-stretch border-t border-border bg-surface/95 px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
-      >
-        {primaryNav.map((item) => (
-          <TabLink key={item.to} {...item} />
-        ))}
-        <TabLink to={paths.more} label="Ещё" icon={Menu} alsoActiveOn={morePaths} unread />
-      </nav>
+      {nav.studentChrome && (
+        <nav
+          aria-label="Разделы"
+          className="fixed inset-x-0 bottom-0 z-40 flex h-tabbar items-stretch border-t border-border bg-surface/95 px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
+        >
+          {nav.primary.map((item) => (
+            <TabLink key={item.to} {...item} />
+          ))}
+          <TabLink to={paths.more} label="Ещё" icon={Menu} alsoActiveOn={morePaths} unread />
+        </nav>
+      )}
     </div>
   );
 }
