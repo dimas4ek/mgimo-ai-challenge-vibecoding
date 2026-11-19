@@ -53,9 +53,12 @@ export async function call<R extends RouteDef>(route: R, args: CallArgs<R>): Pro
     query?: Record<string, unknown>;
     signal?: AbortSignal;
   };
-  const url =
+  const path =
     (buildPath as (p: string, v?: Record<string, string>) => string)(route.path, params) +
     toQueryString(query);
+  // Абсолютный адрес от текущего origin: в браузере то же самое, а в тестах (jsdom + fetch из Node)
+  // относительный URL не работает.
+  const url = globalThis.location ? new URL(path, globalThis.location.href).toString() : path;
   const payload = route.body ? route.body.parse(body) : undefined;
 
   let res: Response;
