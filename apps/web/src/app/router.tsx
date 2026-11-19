@@ -24,16 +24,19 @@ import { paths } from "./paths";
 
 function NotFoundPage() {
   return (
-    <EmptyState
-      icon={SearchX}
-      title="Такой страницы нет"
-      description="Возможно, ссылка устарела."
-      action={
-        <Link to={paths.home} className={buttonVariants({ variant: "outline" })}>
-          На главную
-        </Link>
-      }
-    />
+    <>
+      <h1 className="sr-only">Страница не найдена</h1>
+      <EmptyState
+        icon={SearchX}
+        title="Такой страницы нет"
+        description="Возможно, ссылка устарела."
+        action={
+          <Link to={paths.home} className={buttonVariants({ variant: "outline" })}>
+            На главную
+          </Link>
+        }
+      />
+    </>
   );
 }
 
