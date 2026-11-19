@@ -44,6 +44,8 @@ export const routes = {
       response: WeekScheduleSchema,
     },
     grades: { method: "GET", path: "/api/me/grades", response: GradesSchema },
+    /** Сброс демо-данных своего аккаунта (заявки, уведомления) к исходному сиду: для жюри на общих аккаунтах. */
+    demoReset: { method: "POST", path: "/api/me/demo-reset", response: OkSchema },
     requests: {
       list: { method: "GET", path: "/api/me/requests", response: z.array(RequestListItemSchema) },
       create: {
