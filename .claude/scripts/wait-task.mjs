@@ -22,7 +22,7 @@ function loadBoard() {
   const out = execFileSync(
     "gh",
     ["issue", "list", "-R", BOARD, "--state", "open", "--limit", "200", "--json", "number,labels,body"],
-    { encoding: "utf8" },
+    { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 }, // 200 issue с body не влезают в дефолтный 1 МБ
   );
   return JSON.parse(out).map((i) => {
     const deps = (i.body ?? "").split(/\n(?=## )/).find((s) => s.startsWith("## Зависит от")) ?? "";
