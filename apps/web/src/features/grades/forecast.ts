@@ -54,7 +54,43 @@ export interface GoalForecast {
   items: { id: string; subject: string; need: DisciplineNeed }[];
 }
 
+const ORDER: ForecastGoal[] = ["close", "scholarship", "increased"];
+const EXAM_MAX = 40;
+
+/** Порог итога для цели: зачёт всегда «зачтено», экзамен и дифф. зачёт — по цели. */
+function threshold(goal: ForecastGoal, d: DisciplineGrade): number {
+  if (d.controlForm === "credit" || goal === "close") return FORECAST_RULES.pass;
+  return goal === "scholarship" ? FORECAST_RULES.good : FORECAST_RULES.excellent;
+}
+
+function needFor(goal: ForecastGoal, d: DisciplineGrade): DisciplineNeed {
+  const min = threshold(goal, d);
+  const examPoints = Math.max(0, min - d.semesterPoints);
+  if (d.result === "unsatisfactory" || d.result === "failed") {
+    // Со стипендией пересдача несовместима; закрыть сессию пересдачей можно.
+    if (goal !== "close" || examPoints > EXAM_MAX) return { kind: "impossible" };
+    return { kind: "retake", examPoints };
+  }
+  if (d.result !== "pending") {
+    return d.totalPoints >= min ? { kind: "done" } : { kind: "impossible" };
+  }
+  if (examPoints === 0) return { kind: "done" };
+  return examPoints > EXAM_MAX ? { kind: "impossible" } : { kind: "need", examPoints };
+}
+
 /** Прогноз по трём целям: `close`, `scholarship`, `increased` — в этом порядке. Чистая функция. */
-export function forecast(_disciplines: readonly DisciplineGrade[]): GoalForecast[] {
-  throw new Error("not implemented");
+export function forecast(disciplines: readonly DisciplineGrade[]): GoalForecast[] {
+  return ORDER.map((goal) => {
+    const items = disciplines.map((d) => ({
+      id: d.id,
+      subject: d.subject,
+      need: needFor(goal, d),
+    }));
+    return {
+      goal,
+      reachable: items.every((i) => i.need.kind !== "impossible"),
+      remaining: items.filter((i) => i.need.kind === "need" || i.need.kind === "retake").length,
+      items,
+    };
+  });
 }

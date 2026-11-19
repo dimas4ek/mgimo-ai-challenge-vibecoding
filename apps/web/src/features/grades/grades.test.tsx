@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { type DisciplineGrade, fixtures, routes } from "@aihs/contract";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
 import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -127,10 +127,28 @@ describe("экран успеваемости", () => {
     expect(screen.getByText("2 из 4")).toBeTruthy();
     expect(screen.getByText(/28 декабря – 24 января/).textContent).toContain("через 39 дней");
 
-    const cards = within(screen.getByRole("list")).getAllByRole("heading", { level: 3 });
+    const section = screen.getByRole("region", { name: "Дисциплины" });
+    const cards = within(section).getAllByRole("heading", { level: 3 });
     expect(cards[0]?.textContent).toBe("Теория вероятностей и статистика");
     expect(screen.getByText("Неудовлетворительно")).toBeTruthy();
     expect(screen.getByText("ещё не сдан")).toBeTruthy();
+  });
+
+  it("калькулятор: по умолчанию достижимая цель, переключение показывает правило и итог", async () => {
+    open();
+    expect(await screen.findByRole("heading", { name: "Что нужно набрать" })).toBeTruthy();
+    // Стипендия и повышенная недостижимы из-за долга — выбрана «Закрыть сессию».
+    const close = screen.getByRole("button", { name: "Закрыть сессию" });
+    expect(close.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByText(/баллы нужны ещё по 2 дисциплинам из 4/)).toBeTruthy();
+    expect(screen.getByText("от 3 из 40")).toBeTruthy();
+    expect(screen.getByText("Пересдача: от 33 из 40")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Стипендия" }));
+    expect(screen.getByText(/не ниже 70 баллов/)).toBeTruthy();
+    expect(screen.getByText(/уже не получится/)).toBeTruthy();
+    expect(screen.getByText("от 18 из 40")).toBeTruthy();
+    expect(screen.getByText("Долг: нужна пересдача")).toBeTruthy();
   });
 
   it("оценок нет — пустое состояние", async () => {
