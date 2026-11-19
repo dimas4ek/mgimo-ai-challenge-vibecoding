@@ -1,3 +1,4 @@
+import type { Role } from "@aihs/contract";
 import {
   Bell,
   CalendarDays,
@@ -18,7 +19,7 @@ import { Disclaimer, Logo } from "./brand";
 import { morePaths, paths } from "./paths";
 import { useTheme } from "./theme";
 
-type NavItem = {
+export type NavItem = {
   to: string;
   label: string;
   /** Подпись в таб-баре, если полная не влезает в 360 px. */
@@ -42,6 +43,20 @@ export const secondaryNav: NavItem[] = [
   { to: paths.notifications, label: "Уведомления", icon: Bell, unread: true },
   { to: paths.profile, label: "Профиль", icon: UserRound },
 ];
+
+/**
+ * Навигация по роли. Студенту — его разделы, таб-бар и колокольчик. Сотруднику — только
+ * «Заявки студентов» в меню, без таб-бара и колокольчика (студенческие страницы ему закрыты),
+ * а выход — кнопкой в шапке, потому что вкладки «Ещё» у него нет. Пока роль неизвестна — как студенту.
+ */
+export function navFor(_role: Role | undefined): {
+  primary: NavItem[];
+  secondary: NavItem[];
+  /** Нижний таб-бар и колокольчик (только студент). */
+  studentChrome: boolean;
+} {
+  throw new Error("not implemented");
+}
 
 function ThemeToggle() {
   const { theme, toggle } = useTheme();
