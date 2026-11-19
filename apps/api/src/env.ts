@@ -20,6 +20,8 @@ export interface AppDeps {
   secureCookies?: boolean;
   /** Лимит неудачных входов с одного адреса за окно. По умолчанию 10 за 15 минут. */
   loginRateLimit?: { max: number; windowMs: number };
+  /** Каталог собранной SPA (`STATIC_DIR`). Задан — API раздаёт её на `/`; нет — только API (dev: фронт отдаёт Vite). */
+  staticDir?: string;
 }
 
 /** Типы контекста Hono: `c.var.db`, `c.var.now()`, `c.var.user` (после `requireAuth`). */

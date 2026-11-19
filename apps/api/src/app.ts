@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { authRoutes } from "./auth/routes";
 import type { AppDeps, AppEnv } from "./env";
 import { errorHandler, notFoundHandler } from "./http/errors";
+import { spaStatic } from "./http/static";
 import { gradeRoutes } from "./modules/grades/routes";
 import { notificationRoutes } from "./modules/notifications/routes";
 import { profileRoutes } from "./modules/profile/routes";
@@ -32,5 +33,7 @@ export function createApp(deps: AppDeps) {
   app.route("/", profileRoutes());
   app.route("/", scheduleRoutes());
   app.route("/", gradeRoutes());
+  // Статика последней: API-роуты выше неё всегда в приоритете.
+  if (deps.staticDir) app.get("*", spaStatic(deps.staticDir));
   return app;
 }
