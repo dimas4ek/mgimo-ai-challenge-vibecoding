@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { authRoutes } from "./auth/routes";
 import type { AppDeps, AppEnv } from "./env";
 import { errorHandler, notFoundHandler } from "./http/errors";
+import { gradeRoutes } from "./modules/grades/routes";
 import { notificationRoutes } from "./modules/notifications/routes";
 import { profileRoutes } from "./modules/profile/routes";
 import { requestRoutes } from "./modules/requests/routes";
@@ -30,5 +31,6 @@ export function createApp(deps: AppDeps) {
   app.route("/", notificationRoutes());
   app.route("/", profileRoutes());
   app.route("/", scheduleRoutes());
+  app.route("/", gradeRoutes());
   return app;
 }
