@@ -4,6 +4,7 @@ import { authRoutes } from "./auth/routes";
 import type { AppDeps, AppEnv } from "./env";
 import { errorHandler, notFoundHandler } from "./http/errors";
 import { spaStatic } from "./http/static";
+import { certificateRoutes } from "./modules/certificates/routes";
 import { gradeRoutes } from "./modules/grades/routes";
 import { notificationRoutes } from "./modules/notifications/routes";
 import { profileRoutes } from "./modules/profile/routes";
@@ -35,6 +36,7 @@ export function createApp(deps: AppDeps) {
   app.route("/", scheduleRoutes());
   app.route("/", gradeRoutes());
   app.route("/", staffRoutes());
+  app.route("/", certificateRoutes());
   // Статика последней: API-роуты выше неё всегда в приоритете.
   if (deps.staticDir) app.get("*", spaStatic(deps.staticDir));
   return app;

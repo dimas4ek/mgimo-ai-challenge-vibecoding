@@ -1,4 +1,5 @@
 export * from "./auth";
+export * from "./certificates";
 export * from "./common";
 export * from "./fixtures";
 export * from "./grades";

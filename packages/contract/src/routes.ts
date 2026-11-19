@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { LoginInputSchema, MeSchema } from "./auth";
+import { CertificateSchema, CertificateVerificationSchema } from "./certificates";
 import { OkSchema } from "./common";
 import { GradesSchema } from "./grades";
 import { HealthSchema } from "./health";
@@ -61,6 +62,13 @@ export const routes = {
         response: NotificationSchema,
       },
     },
+    certificates: {
+      get: {
+        method: "GET",
+        path: "/api/me/certificates/:requestId",
+        response: CertificateSchema,
+      },
+    },
   },
 
   staff: {
@@ -76,6 +84,17 @@ export const routes = {
         path: "/api/staff/requests/:id/status",
         body: ChangeStatusInputSchema,
         response: StaffRequestItemSchema,
+      },
+    },
+  },
+
+  /** Без входа. Отдаёт только то, что можно показать любому, кто отсканировал QR. */
+  public: {
+    certificates: {
+      verify: {
+        method: "GET",
+        path: "/api/public/certificates/:token",
+        response: CertificateVerificationSchema,
       },
     },
   },

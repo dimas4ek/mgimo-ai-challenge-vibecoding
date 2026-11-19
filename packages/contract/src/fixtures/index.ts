@@ -1,6 +1,7 @@
 // Вымышленные данные AI High School для заглушек API, MSW и тестов (`.claude/rules/fictional-data.md`).
 // Совпадения ФИО с реальными людьми случайны. Даты — неделя 16–22.11.2026; живой сид строит их от текущей даты.
 import type { Me } from "../auth";
+import type { Certificate, CertificateVerification } from "../certificates";
 import type { Grades } from "../grades";
 import type { NotificationList } from "../notifications";
 import type { Profile } from "../profile";
@@ -203,6 +204,36 @@ const request3: Request = {
   history: [{ status: "submitted", at: "2026-11-19T09:30:00.000Z", comment: null }],
 };
 
+const certificateToken = "Q9tVb2kXo7TfL3mNcR8sWy1Hd4GpJ6ZaE0uKiYxBvQw";
+
+/** Справка по готовой заявке request1 (справка об обучении). */
+const certificate: Certificate = {
+  requestId: ids.request1,
+  type: "enrollment_certificate",
+  number: "AIHS-2026-4F7A1C",
+  issuedAt: "2026-11-13T11:40:00.000Z",
+  token: certificateToken,
+  verifyPath: `/verify/${certificateToken}`,
+  student: {
+    fullName: "Лебедянская Мирослава Игоревна",
+    recordBookNumber: profile.recordBookNumber,
+    faculty: profile.faculty,
+    program: profile.program,
+    course: profile.course,
+    group: profile.group,
+  },
+  purpose: "Для предоставления по месту работы родителей",
+};
+
+/** Что видит любой, кто отсканировал QR этой справки. */
+const certificateVerification: CertificateVerification = {
+  type: certificate.type,
+  number: certificate.number,
+  issuedOn: "2026-11-13",
+  valid: true,
+  holderInitials: "Л. М. И.",
+};
+
 const toListItem = ({ history: _history, ...item }: Request): RequestListItem => item;
 
 const notifications: NotificationList = {
@@ -269,4 +300,14 @@ export const fixtures = {
   } as Record<string, Request | undefined>,
   notifications,
   staffRequests,
+  /** Справки по id заявки; заявка не справка или не готова → `undefined` (API отвечает 404). */
+  certificateByRequestId: { [ids.request1]: certificate } as Record<
+    string,
+    Certificate | undefined
+  >,
+  /** Проверка по токену; неизвестный токен → `undefined` (API отвечает 404). */
+  verificationByToken: { [certificateToken]: certificateVerification } as Record<
+    string,
+    CertificateVerification | undefined
+  >,
 } as const;

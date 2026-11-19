@@ -35,13 +35,16 @@ describe("routes", () => {
         "me.notifications.markRead",
         "staff.requests.list",
         "staff.requests.changeStatus",
+        "me.certificates.get",
+        "public.certificates.verify",
       ].sort(),
     );
   });
 
   it.each(all)("%s: метод, путь /api/… и схема ответа", (_name, route) => {
     expect(["GET", "POST"]).toContain(route.method);
-    expect(route.path).toMatch(/^\/api\/[a-z0-9/:_-]+$/);
+    // Сегменты в нижнем регистре, параметры — `:id` или `:requestId`.
+    expect(route.path).toMatch(/^\/api(\/([a-z0-9_-]+|:[A-Za-z]\w*))+$/);
     expect(route.response).toBeInstanceOf(z.ZodType);
     if (route.method === "GET") expect(route.body).toBeUndefined();
   });
@@ -58,6 +61,15 @@ describe("routes", () => {
     }
     for (const [name, route] of all.filter(([n]) => n.startsWith("staff."))) {
       expect(route.path, name).toMatch(/^\/api\/staff\//);
+    }
+  });
+
+  it("публичные роуты (без входа) только под /api/public и только GET", () => {
+    const pub = all.filter(([n]) => n.startsWith("public."));
+    expect(pub.length).toBeGreaterThan(0);
+    for (const [name, route] of pub) {
+      expect(route.path, name).toMatch(/^\/api\/public\//);
+      expect(route.method, name).toBe("GET");
     }
   });
 });
