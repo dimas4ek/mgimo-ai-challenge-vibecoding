@@ -8,6 +8,11 @@
   "files": {
     "includes": ["**", "!.claude", "!docs"]
   },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  },
   "formatter": {
     "indentStyle": "space",
     "indentWidth": 2,

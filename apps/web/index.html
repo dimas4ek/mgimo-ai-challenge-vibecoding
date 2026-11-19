@@ -3,7 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
     <title>Цифровой деканат — AI High School</title>
+    <!-- Тема до первой отрисовки, без вспышки. Та же логика, что в src/app/theme.ts. -->
+    <script>
+      (() => {
+        var t = null;
+        try { t = localStorage.getItem("aihs-theme"); } catch {}
+        if (t !== "light" && t !== "dark") {
+          t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+        document.documentElement.dataset.theme = t;
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -1,11 +1,12 @@
-/** Временная заглушка: каркас приложения и роутер появятся в задаче «Дизайн-система». */
+import { useState } from "react";
+import { RouterProvider } from "react-router";
+import { createAppRouter } from "./app/router";
+
+/**
+ * Корень приложения. Провайдеры данных (TanStack Query, MSW) добавляет задача #12 здесь же,
+ * оборачивая `RouterProvider`.
+ */
 export function App() {
-  return (
-    <main className="grid min-h-dvh place-items-center p-6 text-center">
-      <div>
-        <h1 className="text-2xl font-semibold">Цифровой деканат AI High School</h1>
-        <p className="mt-2 text-sm opacity-70">Концепт для конкурса, не официальный сервис</p>
-      </div>
-    </main>
-  );
+  const [router] = useState(createAppRouter);
+  return <RouterProvider router={router} />;
 }

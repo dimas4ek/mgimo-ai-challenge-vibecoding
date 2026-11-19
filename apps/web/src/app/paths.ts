@@ -1,0 +1,28 @@
+/**
+ * Пути страниц SPA. Ссылки строим только отсюда (`paths.request("…")`), строки руками не пишем.
+ * Пути API — в `@aihs/contract` (`routes`), это другое.
+ */
+export const paths = {
+  login: "/login",
+  home: "/",
+  schedule: "/schedule",
+  grades: "/grades",
+  requests: "/requests",
+  /** Шаблон для роутера; ссылку строй через `paths.request(id)`. */
+  requestPattern: "/requests/:id",
+  request: (id: string) => `/requests/${encodeURIComponent(id)}`,
+  notifications: "/notifications",
+  profile: "/profile",
+  /** Таб «Ещё» на телефоне: уведомления, профиль, тема, выход. */
+  more: "/more",
+  staff: "/staff",
+  /** Справка для печати с QR (без AppShell, для печати). Наполняет #26. */
+  certificatePattern: "/requests/:id/certificate",
+  certificate: (requestId: string) => `/requests/${encodeURIComponent(requestId)}/certificate`,
+  /** Публичная проверка справки по QR, без входа и без AppShell. Наполняет #26. */
+  verifyPattern: "/verify/:token",
+  verify: (token: string) => `/verify/${encodeURIComponent(token)}`,
+} as const;
+
+/** Разделы, которые на телефоне открываются из вкладки «Ещё» (для её подсветки). */
+export const morePaths: readonly string[] = [paths.more, paths.notifications, paths.profile];
