@@ -1,4 +1,8 @@
+import { hash } from "@node-rs/argon2";
+import { inArray, notInArray } from "drizzle-orm";
 import type { Db } from "../client";
+import * as schema from "../schema";
+import { buildSeedData } from "./data";
 
 /**
  * Тестовые аккаунты вымышленного вуза. Пароли тоже вымышленные, они же будут в README для жюри.
@@ -28,7 +32,57 @@ export interface SeedOptions {
  * у двух студентов разные группы и разные данные.
  */
 export async function seed(db: Db, options: SeedOptions): Promise<void> {
-  void db;
-  void options;
-  throw new Error("not implemented");
+  const data = buildSeedData(options.now, seedAccounts);
+  const userIds = data.users.map((u) => u.id);
+
+  // argon2 медленный нарочно: хешируем только тех, кого ещё нет в БД.
+  const existing = await db
+    .select({ id: schema.users.id })
+    .from(schema.users)
+    .where(inArray(schema.users.id, userIds));
+  const existingIds = new Set(existing.map((r) => r.id));
+  const newUsers = await Promise.all(
+    data.users
+      .filter((u) => !existingIds.has(u.id))
+      .map(async ({ password, ...u }) => ({ ...u, passwordHash: await hash(password) })),
+  );
+
+  await db.transaction(async (tx) => {
+    // Чужие пользователи (их в демо быть не должно) уходят вместе с сессиями и уведомлениями.
+    await tx.delete(schema.users).where(notInArray(schema.users.id, userIds));
+    for (const { password: _password, id, ...u } of data.users) {
+      if (existingIds.has(id)) {
+        await tx
+          .update(schema.users)
+          .set({ login: u.login, role: u.role, displayName: u.displayName })
+          .where(inArray(schema.users.id, [id]));
+      }
+    }
+    if (newUsers.length > 0) await tx.insert(schema.users).values(newUsers);
+
+    // Остальное пересоздаётся целиком; порядок удаления учитывает внешние ключи.
+    await tx.delete(schema.notifications);
+    await tx.delete(schema.requests);
+    await tx.delete(schema.grades);
+    await tx.delete(schema.lessons);
+    await tx.delete(schema.students);
+    await tx.delete(schema.groups);
+    await tx.delete(schema.faculties);
+    await tx.delete(schema.teachers);
+    await tx.delete(schema.subjects);
+    await tx.delete(schema.semesters);
+
+    await tx.insert(schema.faculties).values(data.faculties);
+    await tx.insert(schema.groups).values(data.groups);
+    await tx.insert(schema.students).values(data.students);
+    await tx.insert(schema.teachers).values(data.teachers);
+    await tx.insert(schema.subjects).values(data.subjects);
+    await tx.insert(schema.lessons).values(data.lessons);
+    await tx.insert(schema.lessonChanges).values(data.lessonChanges);
+    await tx.insert(schema.semesters).values(data.semesters);
+    await tx.insert(schema.grades).values(data.grades);
+    await tx.insert(schema.requests).values(data.requests);
+    await tx.insert(schema.requestHistory).values(data.requestHistory);
+    await tx.insert(schema.notifications).values(data.notifications);
+  });
 }
