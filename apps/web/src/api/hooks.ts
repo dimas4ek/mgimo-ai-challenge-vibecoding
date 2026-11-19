@@ -129,12 +129,16 @@ export function useCreateRequest() {
   });
 }
 
-/** Лента уведомлений. Обновляется раз в минуту, чтобы новый статус заявки приходил сам. */
-export function useNotifications() {
+/**
+ * Лента уведомлений. Обновляется раз в минуту, чтобы новый статус заявки приходил сам.
+ * `enabled: false` — не запрашивать (каркас у сотрудника: эндпоинт только для студента).
+ */
+export function useNotifications(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: queryKeys.notifications,
     queryFn: ({ signal }) => api.me.notifications.list(signal),
     refetchInterval: 60_000,
+    enabled: options?.enabled ?? true,
   });
 }
 
