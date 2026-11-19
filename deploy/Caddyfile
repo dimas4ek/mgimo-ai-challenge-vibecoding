@@ -1,0 +1,15 @@
+# Домен берётся из env DOMAIN. Для настоящего домена Caddy сам получает сертификат Let's Encrypt,
+# для localhost — выпускает свой (браузер покажет предупреждение, это нормально для локальной проверки).
+{$DOMAIN} {
+	encode zstd gzip
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	# Caddy добавляет адрес клиента в X-Forwarded-For: по нему API считает rate-limit входа.
+	reverse_proxy api:3000
+}

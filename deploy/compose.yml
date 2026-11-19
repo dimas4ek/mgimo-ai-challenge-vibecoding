@@ -1,0 +1,56 @@
+# Кабинет на одной ВМ: Postgres + API (он же раздаёт SPA) + Caddy с HTTPS.
+# Запуск из корня репозитория (переменные — в .env, образец в .env.example):
+#   docker compose --env-file .env -f deploy/compose.yml up -d --build
+name: aihs
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: aihs
+      POSTGRES_DB: aihs
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?задай POSTGRES_PASSWORD в .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aihs -d aihs"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://aihs:${POSTGRES_PASSWORD}@db:5432/aihs
+    depends_on:
+      db:
+        condition: service_healthy
+    # Наружу не публикуется: снаружи доступен только Caddy.
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

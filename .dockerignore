@@ -1,0 +1,16 @@
+# Контекст сборки — корень репозитория (deploy/compose.yml). Зависимости и сборки ставятся внутри образа.
+**/node_modules
+**/dist
+**/.pglite
+.env
+.env.*
+!.env.example
+.git
+.claude
+docs
+deploy
+coverage
+playwright-report
+test-results
+*.log
+TZ.pdf
