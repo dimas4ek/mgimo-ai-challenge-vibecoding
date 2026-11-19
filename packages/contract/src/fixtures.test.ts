@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { z } from "zod";
 import { MeSchema } from "./auth";
+import { CertificateSchema, CertificateVerificationSchema } from "./certificates";
 import { fixtures } from "./fixtures";
 import { GradesSchema } from "./grades";
 import { NotificationListSchema } from "./notifications";
@@ -25,6 +26,18 @@ const cases: [string, z.ZodType, unknown][] = [
   ),
   ...fixtures.staffRequests.map(
     (r, i) => [`staffRequests[${i}]`, StaffRequestItemSchema, r] as [string, z.ZodType, unknown],
+  ),
+  ...Object.entries(fixtures.certificateByRequestId).map(
+    ([id, c]) =>
+      [`certificateByRequestId.${id}`, CertificateSchema, c] as [string, z.ZodType, unknown],
+  ),
+  ...Object.entries(fixtures.verificationByToken).map(
+    ([t, v]) =>
+      [`verificationByToken.${t}`, CertificateVerificationSchema, v] as [
+        string,
+        z.ZodType,
+        unknown,
+      ],
   ),
 ];
 
