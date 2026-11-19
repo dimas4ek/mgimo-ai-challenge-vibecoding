@@ -166,7 +166,11 @@ export function AppShell() {
       </a>
 
       <aside className="sticky top-0 hidden h-dvh flex-col gap-6 border-r border-border bg-surface px-4 py-5 lg:flex">
-        <Link to={home} className="rounded-md px-2" aria-label="AI High School — на главную">
+        <Link
+          to={home}
+          className="flex min-h-11 items-center rounded-md px-2"
+          aria-label="AI High School — на главную"
+        >
           <Logo />
         </Link>
         <nav aria-label="Разделы" className="flex flex-col gap-1">
@@ -187,7 +191,11 @@ export function AppShell() {
 
       <div className="flex min-w-0 flex-col">
         <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-border bg-background/90 px-4 py-2 backdrop-blur lg:hidden">
-          <Link to={home} className="rounded-md" aria-label="AI High School — на главную">
+          <Link
+            to={home}
+            className="flex min-h-11 items-center rounded-md"
+            aria-label="AI High School — на главную"
+          >
             <Logo />
           </Link>
           <div className="flex items-center">

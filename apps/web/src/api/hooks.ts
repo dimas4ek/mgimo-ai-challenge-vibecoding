@@ -12,6 +12,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { clearApiCache } from "../app/pwa";
 import { api, isApiError } from "./client";
 
 /** Ключи кэша. Инвалидацию делаем только через них. */
@@ -77,9 +78,11 @@ export function useLogout() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => api.auth.logout(),
-    onSettled: () => {
+    onSettled: async () => {
       qc.clear();
       qc.setQueryData(queryKeys.me, null);
+      // Офлайн-кэш service worker (расписание, `me`) тоже чистим: устройство может быть общим.
+      await clearApiCache();
     },
   });
 }
