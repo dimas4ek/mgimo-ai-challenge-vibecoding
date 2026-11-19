@@ -4,7 +4,9 @@ import { authRoutes } from "./auth/routes";
 import type { AppDeps, AppEnv } from "./env";
 import { errorHandler, notFoundHandler } from "./http/errors";
 import { notificationRoutes } from "./modules/notifications/routes";
+import { profileRoutes } from "./modules/profile/routes";
 import { requestRoutes } from "./modules/requests/routes";
+import { scheduleRoutes } from "./modules/schedule/routes";
 
 /**
  * Hono-приложение без запуска сервера: его же используют тесты через `app.request()`.
@@ -26,5 +28,7 @@ export function createApp(deps: AppDeps) {
   app.route("/", authRoutes(deps));
   app.route("/", requestRoutes());
   app.route("/", notificationRoutes());
+  app.route("/", profileRoutes());
+  app.route("/", scheduleRoutes());
   return app;
 }
