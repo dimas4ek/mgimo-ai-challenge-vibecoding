@@ -151,7 +151,7 @@ describe("GET /api/public/certificates/:token", () => {
     );
     const res = await verify(cert.token);
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as Record<string, unknown>;
     // Ровно эти поля: ни ФИО, ни группы, ни зачётки, ни оценок.
     expect(Object.keys(body).sort()).toEqual(
       ["holderInitials", "issuedOn", "number", "type", "valid"].sort(),

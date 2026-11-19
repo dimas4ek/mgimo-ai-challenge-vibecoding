@@ -52,7 +52,7 @@ export async function getCertificate(
     .innerJoin(groups, eq(groups.id, students.groupId))
     .innerJoin(faculties, eq(faculties.id, groups.facultyId))
     .where(and(eq(requests.id, requestId), eq(requests.studentId, studentId)));
-  if (!row || row.status !== "ready" || !isCertificateType(row.type)) return null;
+  if (row?.status !== "ready" || !isCertificateType(row.type)) return null;
 
   // Два одновременных первых открытия не создадут двух справок: вторая вставка просто ничего не сделает.
   await db
