@@ -7,7 +7,7 @@ import type {
   StaffRequestItem,
   StaffRequestsQuery,
 } from "@aihs/contract";
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, notInArray } from "drizzle-orm";
 import type { Db } from "../../db/client";
 import * as schema from "../../db/schema";
 
@@ -169,18 +169,24 @@ export async function changeRequestStatus(
 ): Promise<ChangeStatusResult> {
   const comment = input.comment?.trim() ? input.comment.trim() : null;
   const updated = await db.transaction(async (tx) => {
-    const [row] = await tx.select().from(schema.requests).where(eq(schema.requests.id, id));
-    if (!row) return { ok: false, reason: "not_found" } as const;
-    if (FINAL.includes(row.status)) return { ok: false, reason: "final" } as const;
+    // Условный UPDATE вместо «прочитать → проверить → записать»: два сотрудника одновременно
+    // не смогут оба закрыть заявку — второй UPDATE не найдёт строку с незакрытым статусом.
     const [next] = await tx
       .update(schema.requests)
       .set({ status: input.status, updatedAt: now })
-      .where(eq(schema.requests.id, id))
+      .where(and(eq(schema.requests.id, id), notInArray(schema.requests.status, [...FINAL])))
       .returning();
+    if (!next) {
+      const [exists] = await tx
+        .select({ id: schema.requests.id })
+        .from(schema.requests)
+        .where(eq(schema.requests.id, id));
+      return { ok: false, reason: exists ? "final" : "not_found" } as const;
+    }
     await tx
       .insert(schema.requestHistory)
       .values({ requestId: id, status: input.status, comment, at: now });
-    return { ok: true, row: next ?? row } as const;
+    return { ok: true, row: next } as const;
   });
   if (!updated.ok) return updated;
   const [item] = await withStudents(db, [updated.row]);

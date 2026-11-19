@@ -189,12 +189,19 @@ describe("сервис для кабинета сотрудника (#10)", () =
     expect(item.student.fullName).toMatch(/Лебедянская/);
     expect(item.student.group).not.toBe("—");
 
+    // Следующая смена позже: история упорядочена по времени.
+    const evenLater = new Date("2026-11-19T11:00:00Z");
     const r2 = await changeRequestStatus(
       handle.db,
       created.id,
       { status: "ready", comment: "Готово" },
-      later,
+      evenLater,
     );
+    expect(r2.ok && r2.item.history.map((h) => h.status)).toEqual([
+      "submitted",
+      "in_review",
+      "ready",
+    ]);
     expect(r2.ok && r2.item.history.at(-1)?.comment).toBe("Готово");
 
     const r3 = await changeRequestStatus(handle.db, created.id, { status: "rejected" }, later);
