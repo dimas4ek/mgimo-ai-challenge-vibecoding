@@ -24,6 +24,7 @@ describe("createDb (PGlite в памяти)", () => {
       sql`select table_name from information_schema.tables where table_schema = 'public' order by table_name`,
     )) as { rows: { table_name: string }[] };
     expect(res.rows.map((r) => r.table_name)).toEqual([
+      "certificates",
       "faculties",
       "grades",
       "groups",

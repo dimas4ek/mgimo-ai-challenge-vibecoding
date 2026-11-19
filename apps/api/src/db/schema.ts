@@ -244,6 +244,21 @@ export const requestHistory = pgTable(
   (t) => [index("request_history_request_idx").on(t.requestId)],
 );
 
+/**
+ * Выданная справка. Строка появляется при первом открытии готовой заявки-справки и дальше не меняется:
+ * по токену из QR любой может проверить подлинность без входа.
+ */
+export const certificates = pgTable("certificates", {
+  requestId: uuid("request_id")
+    .primaryKey()
+    .references(() => requests.id, { onDelete: "cascade" }),
+  /** 32 случайных байта в base64url. Секрет, напечатанный в QR, поэтому подобрать его нельзя. */
+  token: text("token").notNull().unique(),
+  /** Номер для печати, вымышленный формат: `AIHS-2026-4F7A1C9B`. */
+  number: text("number").notNull().unique(),
+  createdAt: createdAt(),
+});
+
 /** Уведомление пользователю. */
 export const notifications = pgTable(
   "notifications",
