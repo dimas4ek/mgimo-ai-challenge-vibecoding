@@ -3,17 +3,20 @@ import type {
   CreateRequestInput,
   Request,
   RequestListItem,
+  StaffRequestItem,
+  StaffRequestsQuery,
 } from "@aihs/contract";
 import type { Db } from "../../db/client";
 
 /**
  * Итог смены статуса сотрудником.
- * - `ok` — статус сменён, в истории новая запись; `studentId` нужен #10, чтобы отправить уведомление;
+ * - `ok` — статус сменён, в истории новая запись; `item` — готовый ответ роута #10
+ *   (`StaffRequestItem` с ФИО и группой), `studentId` — для `notify` (#9);
  * - `not_found` — заявки нет;
  * - `final` — заявка уже `ready`/`rejected`, менять нельзя (роут отвечает 409).
  */
 export type ChangeStatusResult =
-  | { ok: true; request: Request; studentId: string }
+  | { ok: true; item: StaffRequestItem; studentId: string }
   | { ok: false; reason: "not_found" | "final" };
 
 /**
@@ -43,6 +46,17 @@ export async function getRequest(
   _studentId: string,
   _id: string,
 ): Promise<Request | null> {
+  throw new Error("not implemented");
+}
+
+/**
+ * Очередь сотрудника (#10, `GET /api/staff/requests?status=`): заявки всех студентов с ФИО и группой,
+ * новые сверху; `status` — фильтр. Вызывать только под `requireRole("staff")`.
+ */
+export async function listAllRequests(
+  _db: Db,
+  _query: StaffRequestsQuery,
+): Promise<StaffRequestItem[]> {
   throw new Error("not implemented");
 }
 
