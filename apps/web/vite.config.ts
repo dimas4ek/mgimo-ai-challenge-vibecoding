@@ -21,5 +21,7 @@ export default defineConfig(({ mode }) => {
     ],
     server: { proxy },
     preview: { proxy },
+    // Общая настройка тестов: таймауты Testing Library под параллельный `pnpm test`.
+    test: { setupFiles: ["./src/test-setup.ts"] },
   };
 });
