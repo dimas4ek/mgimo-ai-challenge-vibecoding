@@ -1,7 +1,6 @@
 import { ChevronRight } from "lucide-react";
 import { Link } from "react-router";
 import { secondaryNav } from "../../app/AppShell";
-import { Disclaimer } from "../../app/brand";
 import { Card, PageHeader } from "../../ui";
 
 /** Вкладка «Ещё» на телефоне: второстепенные разделы. Выход добавит задача #13. */
@@ -27,7 +26,6 @@ export function MorePage() {
           </ul>
         </nav>
       </Card>
-      <Disclaimer className="mt-6" />
     </>
   );
 }

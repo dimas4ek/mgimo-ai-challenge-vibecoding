@@ -17,13 +17,20 @@ import { Disclaimer, Logo } from "./brand";
 import { morePaths, paths } from "./paths";
 import { useTheme } from "./theme";
 
-type NavItem = { to: string; label: string; icon: LucideIcon; end?: boolean };
+type NavItem = {
+  to: string;
+  label: string;
+  /** Подпись в таб-баре, если полная не влезает в 360 px. */
+  shortLabel?: string;
+  icon: LucideIcon;
+  end?: boolean;
+};
 
 /** Основные разделы: нижний таб-бар на телефоне и верх бокового меню на десктопе. */
 const primaryNav: NavItem[] = [
   { to: paths.home, label: "Главная", icon: House, end: true },
   { to: paths.schedule, label: "Расписание", icon: CalendarDays },
-  { to: paths.grades, label: "Успеваемость", icon: GraduationCap },
+  { to: paths.grades, label: "Успеваемость", shortLabel: "Оценки", icon: GraduationCap },
   { to: paths.requests, label: "Заявки", icon: FileText },
 ];
 
@@ -72,6 +79,7 @@ function SidebarLink({ to, label, icon: Icon, end }: NavItem) {
 function TabLink({
   to,
   label,
+  shortLabel,
   icon: Icon,
   end,
   alsoActiveOn,
@@ -101,7 +109,7 @@ function TabLink({
             >
               <Icon aria-hidden className="size-5" />
             </span>
-            <span className="max-w-full truncate">{label}</span>
+            <span className="max-w-full truncate">{shortLabel ?? label}</span>
           </>
         );
       }}
