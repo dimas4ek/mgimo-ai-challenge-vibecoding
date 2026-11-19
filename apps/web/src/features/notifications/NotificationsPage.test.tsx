@@ -171,7 +171,10 @@ describe("NotificationsPage", () => {
     await screen.findByRole("heading", { name: "Кабинет сотрудника" });
     await new Promise((r) => setTimeout(r, 50));
     expect(requested).toBe(false);
-    // Колокольчик и сайдбар на месте, просто без числа.
-    expect(screen.getAllByRole("link", { name: "Уведомления" })).toHaveLength(2);
+    // Студенческой навигации у сотрудника нет: ни колокольчика, ни вкладок; выход — в шапке и меню.
+    expect(screen.queryByRole("link", { name: /Уведомления/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Расписание" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Заявки студентов" })).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "Выйти" })).toHaveLength(2);
   });
 });
