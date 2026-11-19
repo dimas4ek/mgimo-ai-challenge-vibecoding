@@ -48,7 +48,9 @@ describe("GET /api/me/profile", () => {
     expect(res.status).toBe(200);
     const mine = ProfileSchema.parse(await res.json());
     expect(mine.lastName).toBe("Лебедянская");
-    const theirs = ProfileSchema.parse(await (await get(routes.me.profile.path, "student2")).json());
+    const theirs = ProfileSchema.parse(
+      await (await get(routes.me.profile.path, "student2")).json(),
+    );
     expect(theirs.recordBookNumber).not.toBe(mine.recordBookNumber);
     expect(theirs.group).not.toBe(mine.group);
   });
