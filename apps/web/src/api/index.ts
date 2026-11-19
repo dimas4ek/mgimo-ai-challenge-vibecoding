@@ -5,6 +5,7 @@ export {
   queryKeys,
   useChangeRequestStatus,
   useCreateRequest,
+  useDemoReset,
   useGrades,
   useLogin,
   useLogout,

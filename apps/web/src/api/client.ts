@@ -101,6 +101,7 @@ export const api = {
     schedule: (week?: string, signal?: AbortSignal) =>
       call(routes.me.schedule, { query: { week }, signal }),
     grades: (signal?: AbortSignal) => call(routes.me.grades, { signal }),
+    demoReset: () => call(routes.me.demoReset, {}),
     requests: {
       list: (signal?: AbortSignal) => call(routes.me.requests.list, { signal }),
       get: (id: string, signal?: AbortSignal) =>
