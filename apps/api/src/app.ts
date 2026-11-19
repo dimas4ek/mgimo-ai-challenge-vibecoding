@@ -9,6 +9,7 @@ import { notificationRoutes } from "./modules/notifications/routes";
 import { profileRoutes } from "./modules/profile/routes";
 import { requestRoutes } from "./modules/requests/routes";
 import { scheduleRoutes } from "./modules/schedule/routes";
+import { staffRoutes } from "./modules/staff/routes";
 
 /**
  * Hono-приложение без запуска сервера: его же используют тесты через `app.request()`.
@@ -33,6 +34,7 @@ export function createApp(deps: AppDeps) {
   app.route("/", profileRoutes());
   app.route("/", scheduleRoutes());
   app.route("/", gradeRoutes());
+  app.route("/", staffRoutes());
   // Статика последней: API-роуты выше неё всегда в приоритете.
   if (deps.staticDir) app.get("*", spaStatic(deps.staticDir));
   return app;
