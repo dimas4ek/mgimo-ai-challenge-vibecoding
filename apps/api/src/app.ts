@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { authRoutes } from "./auth/routes";
 import type { AppDeps, AppEnv } from "./env";
 import { errorHandler, notFoundHandler } from "./http/errors";
+import { notificationRoutes } from "./modules/notifications/routes";
 import { requestRoutes } from "./modules/requests/routes";
 
 /**
@@ -24,5 +25,6 @@ export function createApp(deps: AppDeps) {
   app.get(routes.health.path, (c) => c.json({ status: "ok" } satisfies Health));
   app.route("/", authRoutes(deps));
   app.route("/", requestRoutes());
+  app.route("/", notificationRoutes());
   return app;
 }
