@@ -24,17 +24,19 @@ TypeScript-монорепо (pnpm workspaces) · Node 24 LTS · Zod (контр�
 
 ## Команды
 
-> Появятся на этапе 0. После бутстрапа здесь будут реальные команды.
+Нужны Node 24+ и pnpm 10 (`npm i -g pnpm@10.34.9`; в Node 25+ corepack убран). Настройки: скопировать `.env.example` в `.env` (необязательно, есть дефолты).
 
 ```
 pnpm install      # зависимости
-pnpm dev          # api + web локально (PGlite, без Docker)
+pnpm dev          # api (:3000, tsx watch) + web (:5173, Vite проксирует /api в api)
 pnpm test         # vitest во всех пакетах
-pnpm typecheck    # tsc --noEmit во всех пакетах
-pnpm lint         # biome check
-pnpm build        # сборка всех пакетов
-pnpm e2e          # playwright (360 px + десктоп)
+pnpm typecheck    # tsc во всех пакетах
+pnpm lint         # biome check (pnpm format — то же с автоисправлением)
+pnpm build        # contract: tsc; api: esbuild → apps/api/dist; web: vite → apps/web/dist
+pnpm e2e          # playwright (360 px + десктоп), появится вместе с e2e-тестами
 ```
+
+Версии зависимостей закреплены точно (`.npmrc`: `save-exact`). Новую зависимость ставь в нужный пакет: `pnpm --filter @aihs/api add <pkg>`.
 CI (`.github/workflows/ci.yml`, Ubuntu + Windows) запускает `pnpm install --frozen-lockfile`, затем `lint`, `typecheck`, `test`, `build`. Если CI и локальная сборка расходятся, прав CI.
 
 ## Правила

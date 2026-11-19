@@ -16,25 +16,15 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
-      # Until stage 0 (bootstrap) lands there is no workspace yet: the job passes without building.
-      - name: Workspace not bootstrapped yet
-        if: hashFiles('pnpm-lock.yaml') == ''
-        run: echo "No pnpm-lock.yaml yet, nothing to build"
+      # pnpm version comes from "packageManager" in package.json.
       - uses: pnpm/action-setup@v6
-        if: hashFiles('pnpm-lock.yaml') != ''
       - uses: actions/setup-node@v7
-        if: hashFiles('pnpm-lock.yaml') != ''
         with:
-          node-version: 24
+          node-version-file: .node-version
           cache: pnpm
       # Same commands as in CLAUDE.md.
-      - if: hashFiles('pnpm-lock.yaml') != ''
-        run: pnpm install --frozen-lockfile
-      - if: hashFiles('pnpm-lock.yaml') != ''
-        run: pnpm lint
-      - if: hashFiles('pnpm-lock.yaml') != ''
-        run: pnpm typecheck
-      - if: hashFiles('pnpm-lock.yaml') != ''
-        run: pnpm test
-      - if: hashFiles('pnpm-lock.yaml') != ''
-        run: pnpm build
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
