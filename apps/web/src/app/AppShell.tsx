@@ -11,6 +11,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { Link, NavLink, Outlet, useLocation } from "react-router";
+import { UnreadBadge, UnreadCountText } from "../features/notifications/UnreadBadge";
 import { cn } from "../lib/cn";
 import { Button } from "../ui";
 import { Disclaimer, Logo } from "./brand";
@@ -24,6 +25,8 @@ type NavItem = {
   shortLabel?: string;
   icon: LucideIcon;
   end?: boolean;
+  /** Показать число непрочитанных уведомлений. */
+  unread?: boolean;
 };
 
 /** Основные разделы: нижний таб-бар на телефоне и верх бокового меню на десктопе. */
@@ -36,7 +39,7 @@ const primaryNav: NavItem[] = [
 
 /** Второстепенные: на телефоне живут во вкладке «Ещё», на десктопе — в меню. */
 export const secondaryNav: NavItem[] = [
-  { to: paths.notifications, label: "Уведомления", icon: Bell },
+  { to: paths.notifications, label: "Уведомления", icon: Bell, unread: true },
   { to: paths.profile, label: "Профиль", icon: UserRound },
 ];
 
@@ -55,7 +58,7 @@ function ThemeToggle() {
   );
 }
 
-function SidebarLink({ to, label, icon: Icon, end }: NavItem) {
+function SidebarLink({ to, label, icon: Icon, end, unread }: NavItem) {
   return (
     <NavLink
       to={to}
@@ -71,6 +74,7 @@ function SidebarLink({ to, label, icon: Icon, end }: NavItem) {
     >
       <Icon aria-hidden className="size-5" />
       {label}
+      {unread && <UnreadBadge />}
     </NavLink>
   );
 }
@@ -83,6 +87,7 @@ function TabLink({
   icon: Icon,
   end,
   alsoActiveOn,
+  unread,
 }: NavItem & { alsoActiveOn?: readonly string[] }) {
   const { pathname } = useLocation();
   const extra = alsoActiveOn?.some((p) => pathname === p || pathname.startsWith(`${p}/`)) ?? false;
@@ -103,13 +108,15 @@ function TabLink({
           <>
             <span
               className={cn(
-                "grid h-7 w-12 place-items-center rounded-full transition-colors",
+                "relative grid h-7 w-12 place-items-center rounded-full transition-colors",
                 isActive && "bg-primary-soft",
               )}
             >
               <Icon aria-hidden className="size-5" />
+              {unread && <UnreadBadge variant="dot" announce={false} />}
             </span>
             <span className="max-w-full truncate">{shortLabel ?? label}</span>
+            {unread && <UnreadCountText />}
           </>
         );
       }}
@@ -159,10 +166,12 @@ export function AppShell() {
             <ThemeToggle />
             <Link
               to={paths.notifications}
-              aria-label="Уведомления"
-              className="grid size-11 place-items-center rounded-md text-foreground hover:bg-muted"
+              className="relative grid size-11 place-items-center rounded-md text-foreground hover:bg-muted"
             >
               <Bell aria-hidden className="size-5" />
+              <span className="sr-only">Уведомления</span>
+              <UnreadBadge variant="dot" className="top-0.5 right-0.5" announce={false} />
+              <UnreadCountText />
             </Link>
           </div>
         </header>
@@ -187,7 +196,7 @@ export function AppShell() {
         {primaryNav.map((item) => (
           <TabLink key={item.to} {...item} />
         ))}
-        <TabLink to={paths.more} label="Ещё" icon={Menu} alsoActiveOn={morePaths} />
+        <TabLink to={paths.more} label="Ещё" icon={Menu} alsoActiveOn={morePaths} unread />
       </nav>
     </div>
   );
