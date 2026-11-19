@@ -3,6 +3,7 @@ import {
   createBrowserRouter,
   isRouteErrorResponse,
   Link,
+  Outlet,
   type RouteObject,
   useRouteError,
 } from "react-router";
@@ -20,6 +21,7 @@ import { SchedulePage } from "../features/schedule/SchedulePage";
 import { StaffPage } from "../features/staff/StaffPage";
 import { buttonVariants, EmptyState, ErrorState } from "../ui";
 import { AppShell } from "./AppShell";
+import { RequireRole } from "./guards";
 import { paths } from "./paths";
 
 function NotFoundPage() {
@@ -54,9 +56,20 @@ function RouteError() {
   );
 }
 
+const studentOnly = (
+  <RequireRole allow="student">
+    <Outlet />
+  </RequireRole>
+);
+const staffOnly = (
+  <RequireRole allow="staff">
+    <Outlet />
+  </RequireRole>
+);
+
 /**
- * Дерево страниц. Охрана маршрутов (вход, роль staff) добавляется задачами #13 и #18
- * через `loader`/обёртку, сами пути не меняются.
+ * Дерево страниц. Кабинет студента и кабинет сотрудника закрыты `RequireRole`:
+ * не вошёл → вход с возвратом, чужая роль → домашняя страница своей роли.
  */
 export const routeTree: RouteObject[] = [
   // Вне AppShell: вход, публичная проверка справки, печатная форма.
@@ -67,15 +80,20 @@ export const routeTree: RouteObject[] = [
     element: <AppShell />,
     errorElement: <RouteError />,
     children: [
-      { path: paths.home, element: <HomePage /> },
-      { path: paths.schedule, element: <SchedulePage /> },
-      { path: paths.grades, element: <GradesPage /> },
-      { path: paths.requests, element: <RequestsPage /> },
-      { path: paths.requestPattern, element: <RequestPage /> },
-      { path: paths.notifications, element: <NotificationsPage /> },
-      { path: paths.profile, element: <ProfilePage /> },
-      { path: paths.more, element: <MorePage /> },
-      { path: paths.staff, element: <StaffPage /> },
+      {
+        element: studentOnly,
+        children: [
+          { path: paths.home, element: <HomePage /> },
+          { path: paths.schedule, element: <SchedulePage /> },
+          { path: paths.grades, element: <GradesPage /> },
+          { path: paths.requests, element: <RequestsPage /> },
+          { path: paths.requestPattern, element: <RequestPage /> },
+          { path: paths.notifications, element: <NotificationsPage /> },
+          { path: paths.profile, element: <ProfilePage /> },
+          { path: paths.more, element: <MorePage /> },
+        ],
+      },
+      { element: staffOnly, children: [{ path: paths.staff, element: <StaffPage /> }] },
       { path: "*", element: <NotFoundPage /> },
     ],
   },
