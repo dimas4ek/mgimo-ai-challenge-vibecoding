@@ -2,7 +2,7 @@
 
 Прототип личного кабинета студента для хакатона MGIMO AI Challenge (номинация «Вайб-кодинг»). Вуз **вымышленный**: AI High School (Высшая Школа ИИ). Сдача 22.11.2026, прототип должен работать до 28.11.
 
-- Этапы и их состав: [ROADMAP.md](ROADMAP.md) (статус задач ведётся на доске, а не в репозитории)
+- Этапы и их состав: [ROADMAP.md](ROADMAP.md) (статус задач ведётся на доске `dimas4ek/mgimo-ai-challenge-vibecoding-board`)
 - Почему так решили: [docs/process/00-analysis.md](docs/process/00-analysis.md)
 - Исходное ТЗ: `TZ.pdf`
 
@@ -29,8 +29,10 @@ pnpm dev          # api + web локально (PGlite, без Docker)
 pnpm test         # vitest во всех пакетах
 pnpm typecheck    # tsc --noEmit во всех пакетах
 pnpm lint         # biome check
+pnpm build        # сборка всех пакетов
 pnpm e2e          # playwright (360 px + десктоп)
 ```
+CI (`.github/workflows/ci.yml`, Ubuntu + Windows) запускает `pnpm install --frozen-lockfile`, затем `lint`, `typecheck`, `test`, `build`. Если CI и локальная сборка расходятся, прав CI.
 
 ## Правила
 Подробности в `.claude/rules/`, модульные правила подгружаются по путям:
@@ -39,6 +41,17 @@ pnpm e2e          # playwright (360 px + десктоп)
 - `cross-platform.md`: команда работает на Linux и Windows
 - `process-log.md`: журнал работы с ИИ, **обязателен**
 - `contract.md`, `backend-api.md`, `frontend-ui.md`: правила модулей
+
+## Совместная работа
+Работаем вдвоём (`agent:dimas`, `agent:evv`) по доске задач, главный принцип — «сначала контракт».
+Правила: [docs/AI-COLLAB.md](docs/AI-COLLAB.md), фразы для людей: [docs/PHRASES.md](docs/PHRASES.md).
+Кто ты, указано в `CLAUDE.local.md` (он не в git). Процедуры оформлены в skills: `/batch`, `/board`, `/fix`, `/proposal`,
+внутри пачки — `take-task`, `contract`, `merge-pr`, `stuck`. `main` защищён: только PR и зелёный CI, хук `.claude/hooks/guard.mjs`.
+
+## Как писать команды Bash (иначе allowlist их отклонит)
+- Без переменных оболочки (`B=…`, `$B`) и без многострочных скриптов: адрес доски всегда полностью, `-R dimas4ek/mgimo-ai-challenge-vibecoding-board`.
+- Одна команда на вызов или цепочка через `&&`. Не используй `;`, `|`, `$( … )`, перенаправления.
+- Длинный текст для `gh` (тело issue/PR/комментария) передавай через `--body "…"`, не через heredoc.
 
 ## Перед тем как сказать «готово»
 1. `pnpm typecheck && pnpm lint && pnpm test` зелёные.
