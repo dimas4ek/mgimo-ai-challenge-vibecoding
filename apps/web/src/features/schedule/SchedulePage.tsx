@@ -1,6 +1,277 @@
-import { StubPage } from "../../app/StubPage";
+import type { Lesson, WeekSchedule } from "@aihs/contract";
+import { CalendarCheck, CalendarX, ChevronLeft, ChevronRight } from "lucide-react";
+import { type ReactNode, useEffect, useState } from "react";
+import { useSearchParams } from "react-router";
+import { useSchedule } from "../../api";
+import { cn } from "../../lib/cn";
+import { Badge, Button, EmptyState, ErrorState, ListSkeleton, PageHeader } from "../../ui";
+import { LessonCard } from "./LessonCard";
+import {
+  addDays,
+  formatDayTitle,
+  formatWeekRange,
+  groupByDay,
+  type IsoDate,
+  isOngoing,
+  lessonsOn,
+  mondayOf,
+  moscowToday,
+  nextLesson,
+} from "./model";
 
-/** Расписание: сегодня и неделя. Наполняет задача #14. */
+type View = "today" | "week";
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** «Сейчас», обновляется раз в минуту: подсветка «Идёт сейчас» не залипает. */
+function useNow(): Date {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
+  return now;
+}
+
+/**
+ * Расписание: вкладки «Сегодня» и «Неделя». Состояние в адресе (`?view=week&week=2026-11-16`),
+ * поэтому ссылка из уведомления о переносе (`/schedule?week=…`) открывает нужную неделю.
+ */
 export function SchedulePage() {
-  return <StubPage title="Расписание" task={14} />;
+  const [params, setParams] = useSearchParams();
+  const now = useNow();
+  const today = moscowToday(now);
+  const weekParam = params.get("week");
+  const week = weekParam && ISO_DATE.test(weekParam) ? mondayOf(weekParam) : null;
+  // Без явного view: есть неделя в адресе — показываем неделю, иначе «Сегодня».
+  const view: View =
+    (params.get("view") ?? (week ? "week" : "today")) === "week" ? "week" : "today";
+
+  const update = (change: (p: URLSearchParams) => void) =>
+    setParams(
+      (prev) => {
+        const p = new URLSearchParams(prev);
+        change(p);
+        return p;
+      },
+      { replace: true },
+    );
+
+  const show = (next: View) =>
+    update((p) => {
+      p.set("view", next);
+      if (next === "today") p.delete("week");
+    });
+
+  const showWeek = (monday: IsoDate) =>
+    update((p) => {
+      p.set("view", "week");
+      if (monday === mondayOf(today)) p.delete("week");
+      else p.set("week", monday);
+    });
+
+  return (
+    <>
+      <PageHeader title="Расписание" description={formatDayTitle(today)} />
+      <div
+        role="tablist"
+        aria-label="Период"
+        className="mb-4 inline-grid grid-cols-2 gap-1 rounded-lg bg-muted p-1"
+      >
+        {(
+          [
+            ["today", "Сегодня"],
+            ["week", "Неделя"],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            id={`schedule-tab-${key}`}
+            aria-selected={view === key}
+            aria-controls="schedule-panel"
+            onClick={() => show(key)}
+            className={cn(
+              "min-h-11 cursor-pointer rounded-md px-5 text-sm font-semibold transition-colors",
+              view === key
+                ? "bg-surface text-foreground shadow-card"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <div id="schedule-panel" role="tabpanel" aria-labelledby={`schedule-tab-${view}`}>
+        {view === "today" ? (
+          <TodayView today={today} now={now} onShowWeek={() => show("week")} />
+        ) : (
+          <WeekView week={week ?? mondayOf(today)} today={today} now={now} onWeek={showWeek} />
+        )}
+      </div>
+    </>
+  );
+}
+
+/** Загрузка (скелетон), ошибка («Повторить») или данные недели. `week` не задан — текущая неделя. */
+function WeekQuery({
+  week,
+  children,
+}: {
+  week: IsoDate | undefined;
+  children: (schedule: WeekSchedule) => ReactNode;
+}) {
+  const query = useSchedule(week);
+  if (query.isPending) return <ListSkeleton rows={3} label="Загружаем расписание…" />;
+  if (query.isError) return <ErrorState onRetry={() => query.refetch()} />;
+  return <>{children(query.data)}</>;
+}
+
+function LessonList({ lessons, now }: { lessons: Lesson[]; now: Date }) {
+  return (
+    <ul className="flex flex-col gap-3">
+      {lessons.map((lesson) => (
+        <li key={lesson.id}>
+          <LessonCard lesson={lesson} ongoing={isOngoing(lesson, now)} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function TodayView({
+  today,
+  now,
+  onShowWeek,
+}: {
+  today: IsoDate;
+  now: Date;
+  onShowWeek: () => void;
+}) {
+  return (
+    <WeekQuery week={undefined}>
+      {(schedule) => {
+        const lessons = lessonsOn(schedule.lessons, today);
+        if (lessons.length > 0) return <LessonList lessons={lessons} now={now} />;
+        const next = nextLesson(schedule.lessons, now);
+        return (
+          <div className="flex flex-col gap-4">
+            <EmptyState
+              icon={CalendarCheck}
+              title="Сегодня пар нет"
+              description="Можно отдохнуть или заняться курсовой."
+              action={
+                <Button variant="outline" onClick={onShowWeek}>
+                  Расписание на неделю
+                </Button>
+              }
+            />
+            {next ? (
+              <NextLesson lesson={next} />
+            ) : (
+              // На этой неделе больше пар нет — ищем первую пару следующей.
+              <WeekQuery week={addDays(mondayOf(today), 7)}>
+                {(nextWeek) => {
+                  const first = nextLesson(nextWeek.lessons, now);
+                  return first ? <NextLesson lesson={first} /> : null;
+                }}
+              </WeekQuery>
+            )}
+          </div>
+        );
+      }}
+    </WeekQuery>
+  );
+}
+
+function NextLesson({ lesson }: { lesson: Lesson }) {
+  return (
+    <section aria-labelledby="next-lesson-title" className="flex flex-col gap-2">
+      <h2 id="next-lesson-title" className="text-sm font-semibold text-muted-foreground">
+        Ближайшая пара
+      </h2>
+      <LessonCard lesson={lesson} showDate />
+    </section>
+  );
+}
+
+function WeekView({
+  week,
+  today,
+  now,
+  onWeek,
+}: {
+  week: IsoDate;
+  today: IsoDate;
+  now: Date;
+  onWeek: (monday: IsoDate) => void;
+}) {
+  const isCurrent = week === mondayOf(today);
+  return (
+    <div className="flex flex-col gap-4">
+      <nav aria-label="Недели" className="flex items-center justify-between gap-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Предыдущая неделя"
+          onClick={() => onWeek(addDays(week, -7))}
+        >
+          <ChevronLeft />
+        </Button>
+        <div className="flex min-w-0 flex-col items-center text-center">
+          <p className="font-semibold">{formatWeekRange(week, addDays(week, 6))}</p>
+          {isCurrent ? (
+            <span className="text-xs text-muted-foreground">Текущая неделя</span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onWeek(mondayOf(today))}
+              className="min-h-11 cursor-pointer px-2 text-xs font-semibold text-primary underline-offset-2 hover:underline"
+            >
+              К текущей неделе
+            </button>
+          )}
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Следующая неделя"
+          onClick={() => onWeek(addDays(week, 7))}
+        >
+          <ChevronRight />
+        </Button>
+      </nav>
+      <WeekQuery week={isCurrent ? undefined : week}>
+        {(schedule) => {
+          const days = groupByDay(schedule.lessons);
+          if (days.length === 0) {
+            return (
+              <EmptyState
+                icon={CalendarX}
+                title="На этой неделе пар нет"
+                description="Каникулы или сессия. Загляните на соседнюю неделю."
+              />
+            );
+          }
+          return (
+            <div className="flex flex-col gap-6">
+              {days.map((day) => (
+                <section key={day.date} aria-labelledby={`day-${day.date}`}>
+                  <h2
+                    id={`day-${day.date}`}
+                    className="mb-2 flex items-center gap-2 text-sm font-semibold"
+                  >
+                    {formatDayTitle(day.date)}
+                    {day.date === today && <Badge tone="primary">Сегодня</Badge>}
+                  </h2>
+                  <LessonList lessons={day.lessons} now={now} />
+                </section>
+              ))}
+            </div>
+          );
+        }}
+      </WeekQuery>
+    </div>
+  );
 }

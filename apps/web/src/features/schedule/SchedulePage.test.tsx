@@ -1,0 +1,157 @@
+// @vitest-environment jsdom
+import { fixtures, routes, type WeekSchedule } from "@aihs/contract";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { HttpResponse, http } from "msw";
+import { setupServer } from "msw/node";
+import { createMemoryRouter, RouterProvider } from "react-router";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { createQueryClient } from "../../api";
+import { handlers, resetMockDb } from "../../mocks/handlers";
+import { SchedulePage } from "./SchedulePage";
+
+// Фикстурная неделя 16–22.11.2026: перенос 17.11, замена 19.11, отмена 20.11, в среду 18.11 пар нет.
+const server = setupServer(...handlers);
+beforeAll(() => server.listen({ onUnhandledFrame: "error" }));
+beforeEach(() => resetMockDb({ as: "student" }));
+afterEach(() => {
+  cleanup();
+  server.resetHandlers();
+  vi.useRealTimers();
+});
+afterAll(() => server.close());
+
+/** «Сейчас» по Москве. Подменяем только Date, таймеры остаются настоящими. */
+function at(date: string, time: string) {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date(`${date}T${time}:00+03:00`));
+}
+
+function renderAt(url: string) {
+  const client = createQueryClient();
+  client.setDefaultOptions({ queries: { retry: false } });
+  const router = createMemoryRouter([{ path: "/schedule", element: <SchedulePage /> }], {
+    initialEntries: [url],
+  });
+  render(
+    <QueryClientProvider client={client}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
+  return router;
+}
+
+/** Карточка пары по названию предмета. */
+const card = (subject: string | RegExp) => {
+  const article = screen.getByRole("heading", { name: subject }).closest("article");
+  if (!article) throw new Error("нет карточки");
+  return article;
+};
+
+describe("SchedulePage", () => {
+  it("сначала скелетон, затем пары сегодняшнего дня; перенос — текстом, иконкой и пояснением", async () => {
+    at("2026-11-17", "10:00");
+    renderAt("/schedule");
+    expect(screen.getByRole("status")).toHaveProperty("textContent", "Загружаем расписание…");
+    await screen.findByRole("heading", { name: "Обработка естественного языка" });
+    const moved = card("Обработка естественного языка");
+    const badge = within(moved).getByText("Перенос");
+    expect(badge.querySelector("svg")).not.toBeNull();
+    expect(moved.textContent).toContain(fixtures.weekSchedule.lessons[2]?.change?.note);
+    // Пары других дней на вкладке «Сегодня» не показываются.
+    expect(screen.queryByRole("heading", { name: "Машинное обучение" })).toBeNull();
+    expect(screen.getByRole("tab", { name: "Сегодня" }).getAttribute("aria-selected")).toBe("true");
+  });
+
+  it("идущая пара подписана «Идёт сейчас»", async () => {
+    at("2026-11-17", "13:30");
+    renderAt("/schedule");
+    await screen.findByRole("heading", { name: "Обработка естественного языка" });
+    expect(within(card("Обработка естественного языка")).getByText("Идёт сейчас")).toBeTruthy();
+  });
+
+  it("сегодня пар нет — пустое состояние и ближайшая пара с датой", async () => {
+    at("2026-11-18", "08:00");
+    renderAt("/schedule");
+    await screen.findByText("Сегодня пар нет");
+    const next = screen.getByRole("region", { name: "Ближайшая пара" });
+    expect(
+      within(next).getByRole("heading", { name: "Этика искусственного интеллекта" }),
+    ).toBeTruthy();
+    expect(next.textContent).toContain("Четверг, 19 ноября");
+    expect(within(next).getByText("Замена")).toBeTruthy();
+  });
+
+  it("неделя: дни с заголовками, отменённая пара зачёркнута и подписана", async () => {
+    at("2026-11-17", "10:00");
+    renderAt("/schedule?view=week");
+    await screen.findByRole("heading", { name: "Понедельник, 16 ноября" });
+    expect(screen.getByText("16–22 ноября")).toBeTruthy();
+    const cancelled = card("Теория вероятностей и статистика");
+    expect(within(cancelled).getByText("Отменена").querySelector("svg")).not.toBeNull();
+    expect(
+      within(cancelled).getByRole("heading", { name: "Теория вероятностей и статистика" })
+        .className,
+    ).toContain("line-through");
+    // Сегодняшний день отмечен текстом, а не только цветом.
+    expect(
+      within(screen.getByRole("heading", { name: /Вторник, 17 ноября/ })).getByText("Сегодня"),
+    ).toBeTruthy();
+  });
+
+  it("ссылка ?week= из уведомления открывает нужную неделю и запрашивает её у API", async () => {
+    at("2026-11-25", "10:00");
+    const weeks: (string | null)[] = [];
+    server.events.on("request:start", ({ request }) => {
+      const url = new URL(request.url);
+      if (url.pathname === routes.me.schedule.path) weeks.push(url.searchParams.get("week"));
+    });
+    renderAt("/schedule?week=2026-11-18");
+    await screen.findByRole("heading", { name: "Понедельник, 16 ноября" });
+    expect(screen.getByRole("tab", { name: "Неделя" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("button", { name: "К текущей неделе" })).toBeTruthy();
+    expect(weeks).toContain("2026-11-16");
+    server.events.removeAllListeners();
+  });
+
+  it("листание: «Следующая неделя» меняет адрес", async () => {
+    at("2026-11-17", "10:00");
+    const router = renderAt("/schedule?view=week");
+    await screen.findByRole("heading", { name: "Понедельник, 16 ноября" });
+    fireEvent.click(screen.getByRole("button", { name: "Следующая неделя" }));
+    expect(router.state.location.search).toContain("week=2026-11-23");
+    expect(screen.getByText("23–29 ноября")).toBeTruthy();
+  });
+
+  it("пустая неделя — понятный текст", async () => {
+    at("2026-11-17", "10:00");
+    server.use(
+      http.get(routes.me.schedule.path, () =>
+        HttpResponse.json({
+          weekStart: "2026-11-16",
+          weekEnd: "2026-11-22",
+          lessons: [],
+        } satisfies WeekSchedule),
+      ),
+    );
+    renderAt("/schedule?view=week");
+    expect(await screen.findByText("На этой неделе пар нет")).toBeTruthy();
+  });
+
+  it("ошибка — сообщение и «Повторить», после повтора данные на месте", async () => {
+    at("2026-11-17", "10:00");
+    server.use(
+      http.get(routes.me.schedule.path, () =>
+        HttpResponse.json({ error: { code: "internal", message: "сбой" } }, { status: 500 }),
+      ),
+    );
+    renderAt("/schedule");
+    await screen.findByRole("alert");
+    expect(screen.getByText("Не получилось загрузить")).toBeTruthy();
+    server.resetHandlers();
+    fireEvent.click(screen.getByRole("button", { name: "Повторить" }));
+    expect(
+      await screen.findByRole("heading", { name: "Обработка естественного языка" }),
+    ).toBeTruthy();
+  });
+});
