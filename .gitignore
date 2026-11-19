@@ -1,6 +1,8 @@
 # Локальное: у каждого своё
 CLAUDE.local.md
 .claude/settings.local.json
+# worktree субагентов в параллельном режиме (AI-COLLAB §14)
+.claude/worktrees/
 .env
 .env.*
 !.env.example
