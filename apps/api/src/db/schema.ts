@@ -1,0 +1,264 @@
+// Схема БД. Меняется только через миграцию: `pnpm db:generate` (drizzle-kit), SQL руками не правим.
+// Значения enum совпадают с enum из `@aihs/contract`, чтобы строки уходили в DTO как есть.
+import {
+  boolean,
+  date,
+  index,
+  integer,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
+
+const id = () => uuid("id").primaryKey().defaultRandom();
+const createdAt = () => timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
+
+export const roleEnum = pgEnum("role", ["student", "staff"]);
+export const lessonTypeEnum = pgEnum("lesson_type", [
+  "lecture",
+  "seminar",
+  "lab",
+  "consultation",
+  "exam",
+]);
+export const lessonChangeKindEnum = pgEnum("lesson_change_kind", [
+  "moved",
+  "replaced",
+  "cancelled",
+]);
+export const controlFormEnum = pgEnum("control_form", ["exam", "credit", "graded_credit"]);
+export const gradeResultEnum = pgEnum("grade_result", [
+  "excellent",
+  "good",
+  "satisfactory",
+  "unsatisfactory",
+  "passed",
+  "failed",
+  "pending",
+]);
+export const requestTypeEnum = pgEnum("request_type", [
+  "enrollment_certificate",
+  "scholarship_certificate",
+  "military_registration_certificate",
+  "transcript",
+  "retake_application",
+  "academic_leave_application",
+  "individual_schedule_application",
+]);
+export const requestStatusEnum = pgEnum("request_status", [
+  "submitted",
+  "in_review",
+  "ready",
+  "rejected",
+]);
+export const notificationTypeEnum = pgEnum("notification_type", [
+  "news",
+  "deadline",
+  "schedule_change",
+  "request",
+]);
+
+/** Учётная запись: студент или сотрудник деканата. */
+export const users = pgTable("users", {
+  id: id(),
+  login: text("login").notNull().unique(),
+  /** argon2id, открытый пароль нигде не хранится. */
+  passwordHash: text("password_hash").notNull(),
+  role: roleEnum("role").notNull(),
+  /** Как показывать в шапке: «Мирослава Лебедянская». */
+  displayName: text("display_name").notNull(),
+  createdAt: createdAt(),
+});
+
+/** Сессия входа. В cookie уходит токен, здесь хранится только его хеш. */
+export const sessions = pgTable(
+  "sessions",
+  {
+    /** SHA-256 токена из cookie (hex). */
+    tokenHash: text("token_hash").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("sessions_user_idx").on(t.userId)],
+);
+
+export const faculties = pgTable("faculties", {
+  id: id(),
+  name: text("name").notNull().unique(),
+});
+
+/** Учебная группа. Направление и курс — свойства группы. */
+export const groups = pgTable("groups", {
+  id: id(),
+  name: text("name").notNull().unique(),
+  facultyId: uuid("faculty_id")
+    .notNull()
+    .references(() => faculties.id),
+  /** «09.03.01 Прикладной искусственный интеллект». */
+  program: text("program").notNull(),
+  course: integer("course").notNull(),
+});
+
+export const students = pgTable("students", {
+  id: id(),
+  userId: uuid("user_id")
+    .notNull()
+    .unique()
+    .references(() => users.id, { onDelete: "cascade" }),
+  groupId: uuid("group_id")
+    .notNull()
+    .references(() => groups.id),
+  lastName: text("last_name").notNull(),
+  firstName: text("first_name").notNull(),
+  middleName: text("middle_name"),
+  /** Вымышленный формат: `AI-2024-0142`. */
+  recordBookNumber: text("record_book_number").notNull().unique(),
+  email: text("email").notNull(),
+});
+
+export const teachers = pgTable("teachers", {
+  id: id(),
+  /** «Зарецкий Глеб Аркадьевич». */
+  fullName: text("full_name").notNull(),
+});
+
+export const subjects = pgTable("subjects", {
+  id: id(),
+  name: text("name").notNull().unique(),
+});
+
+/** Пара группы в конкретный день. Дата — календарная по Москве, время — `HH:MM` по Москве. */
+export const lessons = pgTable(
+  "lessons",
+  {
+    id: id(),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => groups.id),
+    subjectId: uuid("subject_id")
+      .notNull()
+      .references(() => subjects.id),
+    teacherId: uuid("teacher_id")
+      .notNull()
+      .references(() => teachers.id),
+    type: lessonTypeEnum("type").notNull(),
+    date: date("date", { mode: "string" }).notNull(),
+    start: text("start").notNull(),
+    end: text("end").notNull(),
+    room: text("room").notNull(),
+  },
+  (t) => [index("lessons_group_date_idx").on(t.groupId, t.date)],
+);
+
+/** Изменение пары (перенос, замена, отмена). Не больше одного на пару. */
+export const lessonChanges = pgTable("lesson_changes", {
+  lessonId: uuid("lesson_id")
+    .primaryKey()
+    .references(() => lessons.id, { onDelete: "cascade" }),
+  kind: lessonChangeKindEnum("kind").notNull(),
+  /** Пояснение для студента: «Перенесено с 18.11 из-за конференции». */
+  note: text("note").notNull(),
+  /** Для `moved`: где пара стояла раньше. */
+  originalDate: date("original_date", { mode: "string" }),
+  originalStart: text("original_start"),
+});
+
+/** Семестр и его экзаменационная сессия. */
+export const semesters = pgTable("semesters", {
+  id: id(),
+  /** «Осенний семестр 2026/27». */
+  name: text("name").notNull().unique(),
+  sessionStart: date("session_start", { mode: "string" }),
+  sessionEnd: date("session_end", { mode: "string" }),
+  /** Текущий семестр ровно один. */
+  isCurrent: boolean("is_current").notNull().default(false),
+});
+
+/** Баллы БРС студента по дисциплине в семестре. Итоговая сумма считается, а не хранится. */
+export const grades = pgTable(
+  "grades",
+  {
+    id: id(),
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    semesterId: uuid("semester_id")
+      .notNull()
+      .references(() => semesters.id),
+    subjectId: uuid("subject_id")
+      .notNull()
+      .references(() => subjects.id),
+    teacherId: uuid("teacher_id")
+      .notNull()
+      .references(() => teachers.id),
+    controlForm: controlFormEnum("control_form").notNull(),
+    /** Трудоёмкость, з. е. */
+    credits: integer("credits").notNull(),
+    /** 0–60. */
+    semesterPoints: integer("semester_points").notNull(),
+    /** 0–40; `null` — ещё не сдавал. */
+    examPoints: integer("exam_points"),
+    result: gradeResultEnum("result").notNull(),
+  },
+  (t) => [
+    uniqueIndex("grades_student_semester_subject_idx").on(t.studentId, t.semesterId, t.subjectId),
+  ],
+);
+
+/** Заявка студента: справка или заявление. */
+export const requests = pgTable(
+  "requests",
+  {
+    id: id(),
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    type: requestTypeEnum("type").notNull(),
+    status: requestStatusEnum("status").notNull().default("submitted"),
+    comment: text("comment"),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("requests_student_idx").on(t.studentId)],
+);
+
+/** История статусов заявки. Первая запись — `submitted`. */
+export const requestHistory = pgTable(
+  "request_history",
+  {
+    id: id(),
+    requestId: uuid("request_id")
+      .notNull()
+      .references(() => requests.id, { onDelete: "cascade" }),
+    status: requestStatusEnum("status").notNull(),
+    /** Комментарий деканата. */
+    comment: text("comment"),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("request_history_request_idx").on(t.requestId)],
+);
+
+/** Уведомление пользователю. */
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: id(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: notificationTypeEnum("type").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    /** Путь внутри приложения (`/requests/<id>`) или `null`. */
+    link: text("link"),
+    read: boolean("read").notNull().default(false),
+    createdAt: createdAt(),
+  },
+  (t) => [index("notifications_user_idx").on(t.userId)],
+);
