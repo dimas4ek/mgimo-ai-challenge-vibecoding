@@ -1,4 +1,6 @@
 // PreToolUse guard (docs/AI-COLLAB.md §13 п.7). Exit 2 = block, stderr goes to Claude.
+// Runs for both the Bash and the PowerShell tool (matcher in .claude/settings.json): on Windows
+// Claude can run git/gh through either one.
 // Node instead of Python: Node is the project runtime, so it is guaranteed on both Linux and Windows.
 //
 // - git push: blocks --force/-f/+refspec, any 'main' target, and a bare push from branch main.
