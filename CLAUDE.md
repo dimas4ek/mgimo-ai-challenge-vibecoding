@@ -37,7 +37,8 @@ pnpm e2e          # playwright (360 px + десктоп), появится вм�
 ```
 
 Версии зависимостей закреплены точно (`.npmrc`: `save-exact`). Новую зависимость ставь в нужный пакет: `pnpm --filter @aihs/api add <pkg>`.
-CI (`.github/workflows/ci.yml`, Ubuntu + Windows) запускает `pnpm install --frozen-lockfile`, затем `lint`, `typecheck`, `test`, `build`. Если CI и локальная сборка расходятся, прав CI.
+Прод-стек (Postgres + API со статикой SPA + Caddy) поднимается так: `docker compose --env-file .env -f deploy/compose.yml up -d --build`. В `.env` нужны `DOMAIN` и `POSTGRES_PASSWORD`. Для разработки Docker не нужен.
+CI (`.github/workflows/ci.yml`, Ubuntu + Windows) запускает `pnpm install --frozen-lockfile`, затем `lint`, `typecheck`, `test`, `build`. Отдельный джоб `docker` (только Ubuntu) поднимает прод-стек и проверяет `/` и `/api/health`. Если CI и локальная сборка расходятся, прав CI.
 
 ## Правила
 
