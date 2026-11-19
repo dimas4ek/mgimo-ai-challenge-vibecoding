@@ -2,8 +2,9 @@ import { ChevronRight } from "lucide-react";
 import { Link } from "react-router";
 import { secondaryNav } from "../../app/AppShell";
 import { Card, PageHeader } from "../../ui";
+import { LogoutButton } from "../auth/LogoutButton";
 
-/** Вкладка «Ещё» на телефоне: второстепенные разделы. Выход добавит задача #13. */
+/** Вкладка «Ещё» на телефоне: второстепенные разделы и выход. */
 export function MorePage() {
   return (
     <>
@@ -26,6 +27,7 @@ export function MorePage() {
           </ul>
         </nav>
       </Card>
+      <LogoutButton block className="mt-6" />
     </>
   );
 }

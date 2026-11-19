@@ -1,12 +1,25 @@
+import { fixtures, type Me } from "@aihs/contract";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { renderToString } from "react-dom/server";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { describe, expect, it } from "vitest";
+import { createQueryClient, queryKeys } from "../api/hooks";
 import { paths } from "./paths";
 import { routeTree } from "./router";
 
-function renderAt(url: string) {
+/** Рендер адреса от имени пользователя: по умолчанию студент, для /staff — сотрудник. */
+function renderAt(
+  url: string,
+  me: Me | null = url === paths.staff ? fixtures.me.staff : fixtures.me.student,
+) {
+  const client = createQueryClient();
+  client.setQueryData(queryKeys.me, me);
   const router = createMemoryRouter(routeTree, { initialEntries: [url] });
-  return renderToString(<RouterProvider router={router} />);
+  return renderToString(
+    <QueryClientProvider client={client}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
 }
 
 const h1 = (html: string) => [...html.matchAll(/<h1[^>]*>(.*?)<\/h1>/g)].map((m) => m[1]);
@@ -42,7 +55,7 @@ describe("роутер", () => {
   });
 
   it.each(barePages)("%s — без AppShell, один h1 «%s», дисклеймер на месте", (url, title) => {
-    const html = renderAt(url);
+    const html = renderAt(url, null);
     expect(h1(html)).toEqual([title]);
     expect(html).not.toContain('aria-label="Разделы"');
     expect(html).toContain("не официальный сервис");
