@@ -53,7 +53,11 @@ export function useMe() {
       try {
         return await api.auth.me(signal);
       } catch (e) {
-        if (isApiError(e, 401)) return null;
+        if (isApiError(e, 401)) {
+          // Сессия кончилась без «Выйти» — офлайн-кэш прошлой сессии на устройстве не нужен.
+          await clearApiCache();
+          return null;
+        }
         throw e;
       }
     },
