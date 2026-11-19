@@ -3,6 +3,7 @@ import { CalendarClock, CircleAlert, CircleCheck, Clock, GraduationCap } from "l
 import { useGrades } from "../../api/hooks";
 import { cn } from "../../lib/cn";
 import { Badge, Card, CardTitle, EmptyState, ErrorState, PageHeader, Skeleton } from "../../ui";
+import { ForecastCard } from "./ForecastCard";
 import {
   controlFormLabel,
   disciplineState,
@@ -164,6 +165,7 @@ export function GradesPage({ now = new Date() }: { now?: Date }) {
       ) : (
         <div className="flex flex-col gap-6">
           <Summary grades={grades.data} now={now} />
+          <ForecastCard disciplines={grades.data.disciplines} />
           <section aria-labelledby="disciplines-title">
             <h2 id="disciplines-title" className="mb-3 text-lg font-semibold">
               Дисциплины
