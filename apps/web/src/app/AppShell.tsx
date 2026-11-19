@@ -10,11 +10,11 @@ import {
   Sun,
   UserRound,
 } from "lucide-react";
-import { Link, NavLink, Outlet } from "react-router";
+import { Link, NavLink, Outlet, useLocation } from "react-router";
 import { cn } from "../lib/cn";
 import { Button } from "../ui";
 import { Disclaimer, Logo } from "./brand";
-import { paths } from "./paths";
+import { morePaths, paths } from "./paths";
 import { useTheme } from "./theme";
 
 type NavItem = { to: string; label: string; icon: LucideIcon; end?: boolean };
@@ -68,31 +68,43 @@ function SidebarLink({ to, label, icon: Icon, end }: NavItem) {
   );
 }
 
-function TabLink({ to, label, icon: Icon, end }: NavItem) {
+/** Вкладка таб-бара. `alsoActiveOn` — пути, на которых вкладка тоже подсвечена («Ещё» → профиль). */
+function TabLink({
+  to,
+  label,
+  icon: Icon,
+  end,
+  alsoActiveOn,
+}: NavItem & { alsoActiveOn?: readonly string[] }) {
+  const { pathname } = useLocation();
+  const extra = alsoActiveOn?.some((p) => pathname === p || pathname.startsWith(`${p}/`)) ?? false;
   return (
     <NavLink
       to={to}
       end={end}
       className={({ isActive }) =>
         cn(
-          "flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 text-[0.6875rem] font-medium",
-          isActive ? "text-primary" : "text-muted-foreground",
+          "flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 text-xs font-medium",
+          isActive || extra ? "text-primary" : "text-muted-foreground",
         )
       }
     >
-      {({ isActive }) => (
-        <>
-          <span
-            className={cn(
-              "grid h-7 w-12 place-items-center rounded-full transition-colors",
-              isActive && "bg-primary-soft",
-            )}
-          >
-            <Icon aria-hidden className="size-5" />
-          </span>
-          <span className="max-w-full truncate">{label}</span>
-        </>
-      )}
+      {({ isActive: own }) => {
+        const isActive = own || extra;
+        return (
+          <>
+            <span
+              className={cn(
+                "grid h-7 w-12 place-items-center rounded-full transition-colors",
+                isActive && "bg-primary-soft",
+              )}
+            >
+              <Icon aria-hidden className="size-5" />
+            </span>
+            <span className="max-w-full truncate">{label}</span>
+          </>
+        );
+      }}
     </NavLink>
   );
 }
@@ -167,7 +179,7 @@ export function AppShell() {
         {primaryNav.map((item) => (
           <TabLink key={item.to} {...item} />
         ))}
-        <TabLink to={paths.more} label="Ещё" icon={Menu} />
+        <TabLink to={paths.more} label="Ещё" icon={Menu} alsoActiveOn={morePaths} />
       </nav>
     </div>
   );

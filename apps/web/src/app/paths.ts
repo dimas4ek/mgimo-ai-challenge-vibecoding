@@ -16,4 +16,13 @@ export const paths = {
   /** Таб «Ещё» на телефоне: уведомления, профиль, тема, выход. */
   more: "/more",
   staff: "/staff",
+  /** Справка для печати с QR (без AppShell, для печати). Наполняет #26. */
+  certificatePattern: "/requests/:id/certificate",
+  certificate: (requestId: string) => `/requests/${encodeURIComponent(requestId)}/certificate`,
+  /** Публичная проверка справки по QR, без входа и без AppShell. Наполняет #26. */
+  verifyPattern: "/verify/:token",
+  verify: (token: string) => `/verify/${encodeURIComponent(token)}`,
 } as const;
+
+/** Разделы, которые на телефоне открываются из вкладки «Ещё» (для её подсветки). */
+export const morePaths: readonly string[] = [paths.more, paths.notifications, paths.profile];

@@ -7,6 +7,8 @@ import {
   useRouteError,
 } from "react-router";
 import { LoginPage } from "../features/auth/LoginPage";
+import { CertificatePage } from "../features/certificates/CertificatePage";
+import { VerifyPage } from "../features/certificates/VerifyPage";
 import { GradesPage } from "../features/grades/GradesPage";
 import { HomePage } from "../features/home/HomePage";
 import { MorePage } from "../features/more/MorePage";
@@ -54,7 +56,10 @@ function RouteError() {
  * через `loader`/обёртку, сами пути не меняются.
  */
 export const routeTree: RouteObject[] = [
+  // Вне AppShell: вход, публичная проверка справки, печатная форма.
   { path: paths.login, element: <LoginPage />, errorElement: <RouteError /> },
+  { path: paths.verifyPattern, element: <VerifyPage />, errorElement: <RouteError /> },
+  { path: paths.certificatePattern, element: <CertificatePage />, errorElement: <RouteError /> },
   {
     element: <AppShell />,
     errorElement: <RouteError />,

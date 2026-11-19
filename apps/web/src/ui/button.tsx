@@ -15,7 +15,8 @@ export const buttonVariants = cva(
       },
       size: {
         md: "",
-        sm: "min-h-9 px-3 text-sm",
+        /** Компактнее по ширине, но высота та же 44: зона касания не уменьшается. */
+        sm: "px-3 text-sm",
         lg: "min-h-12 px-6 text-base",
         icon: "px-0",
       },
