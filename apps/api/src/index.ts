@@ -15,7 +15,7 @@ if (!anyUser) {
   await seed(handle.db, { now: new Date() });
   console.log("БД была пустой: применён сид демо-данных");
 }
-const app = createApp({ db: handle.db });
+const app = createApp({ db: handle.db, staticDir: process.env.STATIC_DIR || undefined });
 
 serve({ fetch: app.fetch, port, hostname }, (info) => {
   console.log(`API слушает порт ${info.port} (БД: ${handle.driver})`);
