@@ -42,6 +42,19 @@ function segments(command) {
   return command.split(/&&|\|\||;|\||\n/).map((p) => tokenize(p.trim()));
 }
 
+// PowerShell lets the same program be called as `& git`, `&git`, `git.exe`, `& "C:\…\git.exe"`.
+// Drop the call operator and reduce the program token to a bare lowercase name without extension.
+function normalize(argv) {
+  const out = [...argv];
+  if (out[0] === "&") out.shift();
+  else if (out[0]?.startsWith("&")) out[0] = out[0].slice(1);
+  if (out.length > 0) {
+    const name = out[0].split(/[\\/]/).pop() ?? "";
+    out[0] = name.toLowerCase().replace(/\.(exe|cmd|bat)$/, "");
+  }
+  return out;
+}
+
 function run(cmd, args, cwd) {
   return spawnSync(cmd, args, { cwd, encoding: "utf8" });
 }
@@ -93,7 +106,7 @@ process.stdin.on("end", () => {
   }
   const command = data.tool_input?.command ?? "";
   const cwd = data.cwd || process.env.CLAUDE_PROJECT_DIR || process.cwd();
-  for (const argv of segments(command)) {
+  for (const argv of segments(command).map(normalize)) {
     if (argv[0] === "git") {
       // Skip git global options so `git -C dir push …` is checked too.
       let i = 1;
