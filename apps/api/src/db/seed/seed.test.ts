@@ -103,7 +103,9 @@ describe("seed", () => {
       .from(schema.lessonChanges)
       .innerJoin(schema.lessons, eq(schema.lessons.id, schema.lessonChanges.lessonId))
       .where(and(gte(schema.lessons.date, "2026-11-16"), lte(schema.lessons.date, "2026-11-22")));
-    expect(new Set(changes.map((c) => c.kind))).toEqual(new Set(["moved", "replaced", "cancelled"]));
+    expect(new Set(changes.map((c) => c.kind))).toEqual(
+      new Set(["moved", "replaced", "cancelled"]),
+    );
     const moved = await db
       .select()
       .from(schema.lessonChanges)
