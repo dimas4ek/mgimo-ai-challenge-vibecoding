@@ -104,6 +104,29 @@ beforeEach(() => resetMockDb({ as: "student" }));
 
 const NOW = new Date("2026-11-19T09:00:00Z");
 
+/**
+ * Вариант с долгом в текущем семестре: на нём проверяются порядок «долг первым» и калькулятор
+ * с пересдачей. В фикстуре контракта долг прошлый (`pastDebts`).
+ */
+const withCurrentDebt = {
+  ...fixtures.grades,
+  disciplines: fixtures.grades.disciplines.map((d) =>
+    d.subject.startsWith("Теория вероятностей")
+      ? {
+          ...d,
+          subject: "Теория вероятностей и статистика",
+          examPoints: 15,
+          totalPoints: 37,
+          result: "unsatisfactory" as const,
+        }
+      : d,
+  ),
+  pastDebts: [],
+  summary: { averagePoints: 63.25, disciplinesTotal: 4, disciplinesPassed: 2, debts: 1 },
+};
+const useCurrentDebt = () =>
+  server.use(http.get(routes.me.grades.path, () => HttpResponse.json(withCurrentDebt)));
+
 function open() {
   const client = createQueryClient();
   client.setDefaultOptions({ queries: { retry: false } });
@@ -121,6 +144,7 @@ describe("экран успеваемости", () => {
   });
 
   it("сводка сверху, сессия, долг первым и подписан текстом", async () => {
+    useCurrentDebt();
     open();
     expect(await screen.findByRole("heading", { name: "Как у меня дела" })).toBeTruthy();
     // Средний балл включает дисциплины без итога — подпись это поясняет.
@@ -138,6 +162,7 @@ describe("экран успеваемости", () => {
   });
 
   it("калькулятор: по умолчанию достижимая цель, переключение показывает правило и итог", async () => {
+    useCurrentDebt();
     open();
     expect(await screen.findByRole("heading", { name: "Что нужно набрать" })).toBeTruthy();
     // Стипендия и повышенная недостижимы из-за долга — выбрана «Закрыть сессию».

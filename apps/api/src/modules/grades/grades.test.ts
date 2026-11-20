@@ -56,7 +56,9 @@ const discipline = (over: Partial<DisciplineGrade>): DisciplineGrade => ({
 
 describe("summarize", () => {
   it("совпадает со сводкой фикстуры контракта", () => {
-    expect(summarize(fixtures.grades.disciplines)).toEqual(fixtures.grades.summary);
+    expect(summarize(fixtures.grades.disciplines, fixtures.grades.pastDebts)).toEqual(
+      fixtures.grades.summary,
+    );
   });
 
   it("pending не закрыт и не долг, failed — долг, среднее округляется до сотых", () => {
