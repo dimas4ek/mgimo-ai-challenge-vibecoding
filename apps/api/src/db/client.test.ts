@@ -33,6 +33,7 @@ describe("createDb (PGlite в памяти)", () => {
       "notifications",
       "request_history",
       "requests",
+      "seed_meta",
       "semesters",
       "sessions",
       "students",
