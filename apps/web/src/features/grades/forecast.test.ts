@@ -1,4 +1,4 @@
-import { type DisciplineGrade, fixtures } from "@aihs/contract";
+import { type DisciplineGrade, fixtures, type PastDebt } from "@aihs/contract";
 import { describe, expect, it } from "vitest";
 import { forecast, type GoalForecast } from "./forecast";
 
@@ -34,7 +34,7 @@ describe("forecast", () => {
   it("фикстура контракта: экзамены впереди, «хорошо», «зачтено»", () => {
     const g = byGoal(forecast(fixtures.grades.disciplines));
     // Машинное обучение 52/60, экзамен; ОЕЯ — «хорошо» 71; Этика — зачтено; ТВиС, ч. 2 — 22/60, экзамен.
-    // Долг по ТВиС, ч. 1 — прошлый (pastDebts), калькулятор текущего семестра его не считает.
+    // Долг по ТВиС, ч. 1 — прошлый (pastDebts): без второго аргумента он не учитывается.
     expect(needs(g.close)).toEqual([
       { kind: "need", examPoints: 3 },
       { kind: "done" },
@@ -100,5 +100,38 @@ describe("forecast", () => {
     expect(needs(g.close)).toEqual([{ kind: "retake", examPoints: 35 }, { kind: "impossible" }]);
     expect(g.close?.reachable).toBe(false);
     expect(needs(g.scholarship)).toEqual([{ kind: "impossible" }, { kind: "impossible" }]);
+  });
+
+  it("долг прошлой сессии: «Закрыть сессию» требует пересдачу, стипендии не трогает", () => {
+    const debt: PastDebt = {
+      ...d({ result: "unsatisfactory", semesterPoints: 25, examPoints: 12, totalPoints: 37 }),
+      semester: "Весенний семестр 2025/26",
+    };
+    const done = d({ result: "good", semesterPoints: 50, examPoints: 25, totalPoints: 75 });
+    const without = byGoal(forecast([done]));
+    const g = byGoal(forecast([done], [debt]));
+
+    // Без долга сессия уже закрыта, с долгом — нет: нужна пересдача отдельной строкой.
+    expect(without.close).toMatchObject({ reachable: true, remaining: 0 });
+    expect(g.close).toMatchObject({ reachable: true, remaining: 1 });
+    expect(g.close?.items[1]).toEqual({
+      id: debt.id,
+      subject: debt.subject,
+      semester: debt.semester,
+      need: { kind: "retake", examPoints: 30 },
+    });
+    // Стипендии считаются только по текущему семестру, как раньше.
+    expect(g.scholarship).toEqual(without.scholarship);
+    expect(g.increased).toEqual(without.increased);
+  });
+
+  it("фикстура контракта с прошлым долгом: пересдача ТВиС, ч. 1 в «Закрыть сессию»", () => {
+    const g = byGoal(forecast(fixtures.grades.disciplines, fixtures.grades.pastDebts));
+    expect(g.close).toMatchObject({ reachable: true, remaining: 3 });
+    expect(g.close?.items.at(-1)).toMatchObject({
+      subject: "Теория вероятностей и статистика, ч. 1",
+      semester: "Весенний семестр 2025/26",
+      need: { kind: "retake", examPoints: 30 },
+    });
   });
 });
