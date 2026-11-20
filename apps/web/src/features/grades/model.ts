@@ -1,8 +1,15 @@
 // Чистая логика экрана успеваемости без React: подписи, статус дисциплины, сроки сессии.
 // Её же использует калькулятор «что нужно для стипендии / закрыть сессию» (#24).
 // Даты — по Москве, а не по часам устройства.
-import type { ControlForm, DisciplineGrade, ExamSession, GradeResult } from "@aihs/contract";
+import type {
+  ControlForm,
+  DisciplineGrade,
+  ExamSession,
+  ExamSlot,
+  GradeResult,
+} from "@aihs/contract";
 import type { BadgeTone } from "../../ui";
+import { moscowTime, moscowToday } from "../schedule/model";
 
 /** Состояние дисциплины для студента: закрыта, долг или итога ещё нет. */
 export type DisciplineState = "passed" | "debt" | "pending";
@@ -100,4 +107,46 @@ export function pluralDays(n: number): string {
   if (mod10 === 1 && mod100 !== 11) word = "день";
   else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) word = "дня";
   return `${n} ${word}`;
+}
+
+/** «12 января, 10:00, ауд. А-214». Дата и время в слоте уже московские. */
+export function formatExamSlot(slot: ExamSlot): string {
+  return `${dayMonth.format(new Date(utc(slot.date)))}, ${slot.start}, ауд. ${slot.room}`;
+}
+
+/** Строка в карточке дисциплины: «Экзамен 12 января, 10:00, ауд. А-214» или «Дата пока не назначена». */
+export function examLine(d: Pick<DisciplineGrade, "controlForm" | "exam">): string {
+  return d.exam
+    ? `${controlFormLabel(d.controlForm)} ${formatExamSlot(d.exam)}`
+    : "Дата пока не назначена";
+}
+
+/**
+ * Ближайший ещё не начавшийся экзамен или зачёт по Москве (дата и время из модели расписания,
+ * а не часы устройства) и сколько до него календарных дней. Дат нет или все прошли — `null`.
+ */
+export function nextExam(
+  disciplines: readonly DisciplineGrade[],
+  now: Date,
+): { discipline: DisciplineGrade; slot: ExamSlot; daysLeft: number } | null {
+  const today = moscowToday(now);
+  const time = moscowTime(now);
+  let best: { discipline: DisciplineGrade; slot: ExamSlot } | null = null;
+  for (const d of disciplines) {
+    const slot = d.exam;
+    if (!slot) continue;
+    const upcoming = slot.date > today || (slot.date === today && slot.start > time);
+    if (!upcoming) continue;
+    const key = `${slot.date} ${slot.start}`;
+    if (!best || key < `${best.slot.date} ${best.slot.start}`) best = { discipline: d, slot };
+  }
+  if (!best) return null;
+  return { ...best, daysLeft: Math.round((utc(best.slot.date) - utc(today)) / DAY) };
+}
+
+/** «сегодня», «завтра», «через 3 дня». */
+export function whenLabel(daysLeft: number): string {
+  if (daysLeft <= 0) return "сегодня";
+  if (daysLeft === 1) return "завтра";
+  return `через ${pluralDays(daysLeft)}`;
 }
