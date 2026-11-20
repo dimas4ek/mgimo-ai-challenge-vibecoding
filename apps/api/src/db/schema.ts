@@ -1,10 +1,12 @@
 // Схема БД. Меняется только через миграцию: `pnpm db:generate` (drizzle-kit), SQL руками не правим.
 // Значения enum совпадают с enum из `@aihs/contract`, чтобы строки уходили в DTO как есть.
+import type { CertificateGrade } from "@aihs/contract";
 import {
   boolean,
   date,
   index,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   text,
@@ -260,6 +262,8 @@ export const certificates = pgTable("certificates", {
   token: text("token").notNull().unique(),
   /** Номер для печати, вымышленный формат: `AIHS-2026-4F7A1C9B`. */
   number: text("number").notNull().unique(),
+  /** Снимок оценок на момент выдачи: только у выписки (`transcript`), у остальных `null`. */
+  grades: jsonb("grades").$type<CertificateGrade[]>(),
   createdAt: createdAt(),
 });
 
