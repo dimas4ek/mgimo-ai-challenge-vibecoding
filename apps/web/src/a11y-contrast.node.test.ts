@@ -9,8 +9,10 @@ import { describe, expect, it } from "vitest";
 const css = readFileSync(new URL("./index.css", import.meta.url), "utf8");
 
 function tokens(selector: ":root" | '[data-theme="dark"]'): Record<string, string> {
-  const start = css.indexOf(`${selector} {`);
-  const block = css.slice(start, css.indexOf("}", start));
+  // Селектор с начала строки; блок — от первой «{» после него (у :root есть соседний селектор).
+  const start = css.indexOf(`\n${selector}`);
+  const open = css.indexOf("{", start);
+  const block = css.slice(open, css.indexOf("}", open));
   return Object.fromEntries(
     [...block.matchAll(/--([\w-]+):\s*(oklch\([^)]*\))/g)].map((m) => [m[1], m[2]]),
   );

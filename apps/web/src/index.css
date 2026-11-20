@@ -9,7 +9,9 @@
  * хардкод цветов и px в компонентах запрещён (.claude/rules/frontend-ui.md).
  * Пары цвет/фон подобраны под контраст WCAG AA (≥ 4.5:1 для текста).
  */
-:root {
+/* [data-theme="light"] на вложенном элементе — светлый «лист» внутри тёмной темы (печатная справка). */
+:root,
+[data-theme="light"] {
   color-scheme: light;
   --background: oklch(0.985 0.004 260);
   --foreground: oklch(0.22 0.03 265);
