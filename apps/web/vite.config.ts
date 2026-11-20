@@ -55,6 +55,12 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           navigateFallback: "/index.html",
+          // Оболочка, все чанки страниц (они грузятся лениво) и шрифт для русского и латиницы —
+          // иначе офлайн текст падает на системный шрифт.
+          globPatterns: [
+            "**/*.{js,css,html,svg,png,webmanifest}",
+            "assets/manrope-{cyrillic,latin}-wght-*.woff2",
+          ],
           // Запросы /api — всегда с сервера (или из кэша ниже), не подменяются оболочкой SPA.
           navigateFallbackDenylist: [/^\/api\//],
           runtimeCaching: [

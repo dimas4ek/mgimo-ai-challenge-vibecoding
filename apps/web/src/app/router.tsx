@@ -8,18 +8,8 @@ import {
   useRouteError,
 } from "react-router";
 import { LoginPage } from "../features/auth/LoginPage";
-import { CertificatePage } from "../features/certificates/CertificatePage";
-import { VerifyPage } from "../features/certificates/VerifyPage";
-import { GradesPage } from "../features/grades/GradesPage";
 import { HomePage } from "../features/home/HomePage";
-import { MorePage } from "../features/more/MorePage";
-import { NotificationsPage } from "../features/notifications/NotificationsPage";
-import { ProfilePage } from "../features/profile/ProfilePage";
-import { RequestPage } from "../features/requests/RequestPage";
-import { RequestsPage } from "../features/requests/RequestsPage";
-import { SchedulePage } from "../features/schedule/SchedulePage";
-import { StaffPage } from "../features/staff/StaffPage";
-import { buttonVariants, EmptyState, ErrorState } from "../ui";
+import { buttonVariants, EmptyState, ErrorState, ListSkeleton, Skeleton } from "../ui";
 import { AppShell } from "./AppShell";
 import { RequireRole } from "./guards";
 import { paths } from "./paths";
@@ -56,6 +46,20 @@ function RouteError() {
   );
 }
 
+/**
+ * Пока при первом открытии грузится файл страницы (страницы, кроме входа, каркаса и главной,
+ * собираются отдельными файлами), показываем скелет кабинета, а не пустой экран.
+ */
+function PageSkeleton() {
+  return (
+    <main id="main" className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 pt-5">
+      <Skeleton className="h-11 w-full rounded-lg" />
+      <Skeleton className="h-8 w-48" />
+      <ListSkeleton rows={3} label="Загружаем страницу…" />
+    </main>
+  );
+}
+
 const studentOnly = (
   <RequireRole allow="student">
     <Outlet />
@@ -73,32 +77,98 @@ const staffOnly = (
  */
 export const routeTree: RouteObject[] = [
   // Вне AppShell: вход, публичная проверка справки, печатная форма.
-  { path: paths.login, element: <LoginPage />, errorElement: <RouteError /> },
-  { path: paths.verifyPattern, element: <VerifyPage />, errorElement: <RouteError /> },
+  {
+    path: paths.login,
+    element: <LoginPage />,
+    errorElement: <RouteError />,
+    hydrateFallbackElement: <PageSkeleton />,
+  },
+  {
+    path: paths.verifyPattern,
+    lazy: () =>
+      import("../features/certificates/VerifyPage").then((m) => ({ Component: m.VerifyPage })),
+    errorElement: <RouteError />,
+    hydrateFallbackElement: <PageSkeleton />,
+  },
   // Печатная справка — без AppShell, но только для вошедшего студента.
   {
     element: studentOnly,
     errorElement: <RouteError />,
-    children: [{ path: paths.certificatePattern, element: <CertificatePage /> }],
+    hydrateFallbackElement: <PageSkeleton />,
+    children: [
+      {
+        path: paths.certificatePattern,
+        lazy: () =>
+          import("../features/certificates/CertificatePage").then((m) => ({
+            Component: m.CertificatePage,
+          })),
+      },
+    ],
   },
   {
     element: <AppShell />,
     errorElement: <RouteError />,
+    hydrateFallbackElement: <PageSkeleton />,
     children: [
       {
         element: studentOnly,
         children: [
           { path: paths.home, element: <HomePage /> },
-          { path: paths.schedule, element: <SchedulePage /> },
-          { path: paths.grades, element: <GradesPage /> },
-          { path: paths.requests, element: <RequestsPage /> },
-          { path: paths.requestPattern, element: <RequestPage /> },
-          { path: paths.notifications, element: <NotificationsPage /> },
-          { path: paths.profile, element: <ProfilePage /> },
-          { path: paths.more, element: <MorePage /> },
+          {
+            path: paths.schedule,
+            lazy: () =>
+              import("../features/schedule/SchedulePage").then((m) => ({
+                Component: m.SchedulePage,
+              })),
+          },
+          {
+            path: paths.grades,
+            lazy: () =>
+              import("../features/grades/GradesPage").then((m) => ({ Component: m.GradesPage })),
+          },
+          {
+            path: paths.requests,
+            lazy: () =>
+              import("../features/requests/RequestsPage").then((m) => ({
+                Component: m.RequestsPage,
+              })),
+          },
+          {
+            path: paths.requestPattern,
+            lazy: () =>
+              import("../features/requests/RequestPage").then((m) => ({
+                Component: m.RequestPage,
+              })),
+          },
+          {
+            path: paths.notifications,
+            lazy: () =>
+              import("../features/notifications/NotificationsPage").then((m) => ({
+                Component: m.NotificationsPage,
+              })),
+          },
+          {
+            path: paths.profile,
+            lazy: () =>
+              import("../features/profile/ProfilePage").then((m) => ({ Component: m.ProfilePage })),
+          },
+          {
+            path: paths.more,
+            lazy: () =>
+              import("../features/more/MorePage").then((m) => ({ Component: m.MorePage })),
+          },
         ],
       },
-      { element: staffOnly, children: [{ path: paths.staff, element: <StaffPage /> }] },
+      {
+        element: staffOnly,
+        children: [
+          {
+            path: paths.staff,
+            lazy: () =>
+              import("../features/staff/StaffPage").then((m) => ({ Component: m.StaffPage })),
+          },
+        ],
+      },
       { path: "*", element: <NotFoundPage /> },
     ],
   },

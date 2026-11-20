@@ -7,19 +7,35 @@ import { createQueryClient, queryKeys } from "../api/hooks";
 import { paths } from "./paths";
 import { routeTree } from "./router";
 
-/** Рендер адреса от имени пользователя: по умолчанию студент, для /staff — сотрудник. */
-function renderAt(
+/**
+ * Рендер адреса от имени пользователя: по умолчанию студент, для /staff — сотрудник.
+ * Страницы грузятся лениво (`lazy` в роутере): ждём, пока роутер подгрузит модули, затем рендерим.
+ */
+async function renderAt(
   url: string,
   me: Me | null = url === paths.staff ? fixtures.me.staff : fixtures.me.student,
 ) {
   const client = createQueryClient();
   client.setQueryData(queryKeys.me, me);
   const router = createMemoryRouter(routeTree, { initialEntries: [url] });
+  await initialized(router);
   return renderToString(
     <QueryClientProvider client={client}>
       <RouterProvider router={router} />
     </QueryClientProvider>,
   );
+}
+
+function initialized(router: ReturnType<typeof createMemoryRouter>): Promise<void> {
+  return new Promise((resolve) => {
+    if (router.state.initialized) return resolve();
+    const stop = router.subscribe((state) => {
+      if (state.initialized) {
+        stop();
+        resolve();
+      }
+    });
+  });
 }
 
 const h1 = (html: string) => [...html.matchAll(/<h1[^>]*>(.*?)<\/h1>/g)].map((m) => m[1]);
@@ -51,32 +67,46 @@ const barePages: [string, string][] = [
 ];
 
 describe("роутер", () => {
-  it.each(shellPages)("%s — внутри AppShell, один h1 «%s»", (url, title) => {
-    const html = renderAt(url);
+  it.each(shellPages)("%s — внутри AppShell, один h1 «%s»", async (url, title) => {
+    const html = await renderAt(url);
     expect(h1(html)).toEqual([title]);
     expect(html.match(/<main/g)).toHaveLength(1);
     expect(html).toContain('aria-label="Разделы"');
     expect(html).toContain("не официальный сервис");
   });
 
-  it.each(barePages)("%s — без AppShell, один h1 «%s», дисклеймер на месте", (url, title) => {
-    const html = renderAt(url, url.endsWith("/certificate") ? fixtures.me.student : null);
+  it.each(barePages)("%s — без AppShell, один h1 «%s», дисклеймер на месте", async (url, title) => {
+    const html = await renderAt(url, url.endsWith("/certificate") ? fixtures.me.student : null);
     expect(h1(html)).toEqual([title]);
     expect(html).not.toContain('aria-label="Разделы"');
     expect(html).toContain("не официальный сервис");
   });
 
-  it("таб-бар: пять вкладок, «Успеваемость» коротко «Оценки»", () => {
-    const html = renderAt(paths.home);
+  it("таб-бар: пять вкладок, «Успеваемость» коротко «Оценки»", async () => {
+    const html = await renderAt(paths.home);
     for (const label of ["Главная", "Расписание", "Оценки", "Заявки", "Ещё"]) {
       expect(html).toContain(`>${label}</span>`);
     }
   });
 
-  it("«Ещё» подсвечена на профиле", () => {
-    const html = renderAt(paths.profile);
+  it("«Ещё» подсвечена на профиле", async () => {
+    const html = await renderAt(paths.profile);
     const more = html.match(/<a[^>]*href="\/more"[^>]*>/)?.[0] ?? "";
     expect(more).toContain("text-primary");
+  });
+});
+
+describe("ленивые страницы", () => {
+  it("пока модуль страницы грузится — скелет, а не пустой экран", () => {
+    const client = createQueryClient();
+    client.setQueryData(queryKeys.me, fixtures.me.student);
+    const router = createMemoryRouter(routeTree, { initialEntries: [paths.grades] });
+    const html = renderToString(
+      <QueryClientProvider client={client}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+    expect(html).toContain("Загружаем страницу");
   });
 });
 
