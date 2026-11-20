@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { useMarkRead, useNotifications } from "../../api";
+import { retryHint, useMarkRead, useNotifications } from "../../api";
 import { cn } from "../../lib/cn";
 import { Badge, Button, EmptyState, ErrorState, ListSkeleton, PageHeader } from "../../ui";
 import { formatTime, groupByDay, notificationTypeView, unreadLabel } from "./model";
@@ -77,7 +77,7 @@ export function NotificationsPage() {
         {query.isPending ? (
           <ListSkeleton rows={4} label="Загружаем уведомления…" />
         ) : query.isError ? (
-          <ErrorState onRetry={() => query.refetch()} />
+          <ErrorState description={retryHint(query.error)} onRetry={() => query.refetch()} />
         ) : (
           <Feed
             items={filter === "unread" ? query.data.items.filter((n) => !n.read) : query.data.items}

@@ -80,7 +80,7 @@ export function EmptyState({ icon = Inbox, ...props }: StateProps) {
 /** Ошибка загрузки: человеческое сообщение и кнопка «Повторить». */
 export function ErrorState({
   title = "Не получилось загрузить",
-  description = "Проверьте интернет и попробуйте ещё раз.",
+  description = "Попробуйте ещё раз.",
   onRetry,
   className,
 }: Partial<Pick<StateProps, "title" | "description" | "className">> & { onRetry?: () => void }) {

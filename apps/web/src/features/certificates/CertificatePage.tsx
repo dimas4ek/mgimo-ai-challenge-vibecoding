@@ -1,12 +1,12 @@
 import { ArrowLeft, FileQuestion, Printer } from "lucide-react";
 import { Link, useParams } from "react-router";
-import { isApiError, useCertificate } from "../../api";
+import { isApiError, retryHint, useCertificate, useRequest } from "../../api";
 import { Disclaimer, Logo } from "../../app/brand";
 import { paths } from "../../app/paths";
 import { cn } from "../../lib/cn";
 import { Button, buttonVariants, EmptyState, ErrorState, Skeleton } from "../../ui";
 import { requestTypeLabel } from "../requests/model";
-import { formatIssuedAt, verifyUrl } from "./model";
+import { certificateStatement, formatIssuedAt, verifyUrl } from "./model";
 import { QrCode } from "./QrCode";
 
 function Field({ label, value }: { label: string; value: string }) {
@@ -26,6 +26,8 @@ function Field({ label, value }: { label: string; value: string }) {
 export function CertificatePage() {
   const { id = "" } = useParams<"id">();
   const query = useCertificate(id);
+  // Статус заявки нужен, только если справки нет: отклонённой не обещаем, что она появится.
+  const request = useRequest(isApiError(query.error, 404) ? id : "");
   const back = paths.request(id);
 
   return (
@@ -54,8 +56,15 @@ export function CertificatePage() {
             <h1 className="sr-only">Справка</h1>
             <EmptyState
               icon={FileQuestion}
-              title="Справки пока нет"
-              description="Она появится, когда деканат отметит заявку как готовую."
+              {...(request.data?.status === "rejected"
+                ? {
+                    title: "Справки не будет",
+                    description: "Заявку отклонили. Причина — в карточке заявки.",
+                  }
+                : {
+                    title: "Справки пока нет",
+                    description: "Она появится, когда деканат отметит заявку как готовую.",
+                  })}
               action={
                 <Link to={back} className={buttonVariants({ variant: "outline" })}>
                   К заявке
@@ -66,7 +75,7 @@ export function CertificatePage() {
         ) : (
           <>
             <h1 className="sr-only">Справка</h1>
-            <ErrorState onRetry={() => query.refetch()} />
+            <ErrorState description={retryHint(query.error)} onRetry={() => query.refetch()} />
           </>
         )
       ) : (
@@ -95,7 +104,7 @@ export function CertificatePage() {
             {requestTypeLabel(query.data.type)}
           </h1>
           <p className="mt-2 text-center text-sm text-muted-foreground">
-            AI High School (Высшая Школа ИИ) подтверждает, что указанное лицо обучается в вузе.
+            {certificateStatement(query.data.type)}
           </p>
 
           <dl className="mt-6 flex flex-col gap-3">

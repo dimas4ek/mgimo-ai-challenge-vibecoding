@@ -122,6 +122,8 @@ describe("экран успеваемости", () => {
   it("сводка сверху, сессия, долг первым и подписан текстом", async () => {
     open();
     expect(await screen.findByRole("heading", { name: "Как у меня дела" })).toBeTruthy();
+    // Средний балл включает дисциплины без итога — подпись это поясняет.
+    expect(screen.getByText(/средний балл из 100 по текущим баллам/)).toBeTruthy();
     expect(screen.getByText(fixtures.grades.semester)).toBeTruthy();
     expect(screen.getByText("63,3")).toBeTruthy();
     expect(screen.getByText("2 из 4")).toBeTruthy();

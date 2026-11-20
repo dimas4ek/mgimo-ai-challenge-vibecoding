@@ -1,5 +1,6 @@
 import { BRS_MAX, type DisciplineGrade, type Grades } from "@aihs/contract";
 import { CalendarClock, CircleAlert, CircleCheck, Clock, GraduationCap } from "lucide-react";
+import { retryHint } from "../../api";
 import { useGrades } from "../../api/hooks";
 import { cn } from "../../lib/cn";
 import { Badge, Card, CardTitle, EmptyState, ErrorState, PageHeader, Skeleton } from "../../ui";
@@ -64,7 +65,9 @@ function Summary({ grades, now }: { grades: Grades; now: Date }) {
         <span className="text-4xl font-bold tracking-tight tabular-nums">
           {averagePoints.toLocaleString("ru-RU", { maximumFractionDigits: 1 })}
         </span>
-        <span className="pb-1 text-sm text-muted-foreground">средний балл из {BRS_MAX.total}</span>
+        <span className="pb-1 text-sm text-muted-foreground">
+          средний балл из {BRS_MAX.total} по текущим баллам
+        </span>
       </div>
       <Bar value={averagePoints} max={BRS_MAX.total} className="mt-3" />
       <dl className="mt-4 grid grid-cols-2 gap-3">
@@ -155,7 +158,7 @@ export function GradesPage({ now = new Date() }: { now?: Date }) {
           <Skeleton className="h-40 w-full rounded-lg" />
         </div>
       ) : grades.isError ? (
-        <ErrorState onRetry={() => grades.refetch()} />
+        <ErrorState description={retryHint(grades.error)} onRetry={() => grades.refetch()} />
       ) : grades.data.disciplines.length === 0 ? (
         <EmptyState
           icon={GraduationCap}

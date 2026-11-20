@@ -34,9 +34,14 @@ export const LessonSchema = z.object({
 });
 export type Lesson = z.infer<typeof LessonSchema>;
 
-/** Query `GET /api/me/schedule?week=YYYY-MM-DD`: любая дата недели; без параметра — текущая неделя по МСК. */
+/**
+ * Query `GET /api/me/schedule?week=YYYY-MM-DD`: любая дата недели; без параметра — текущая неделя по МСК.
+ * Годы 2000–2099: дальше расписания нет, а у 9999-12-27 конец недели уходит в 10000 год.
+ */
 export const ScheduleQuerySchema = z.object({
-  week: IsoDateSchema.optional(),
+  week: IsoDateSchema.refine((d) => d >= "2000-01-01" && d <= "2099-12-31", {
+    message: "Неделя вне 2000–2099 годов",
+  }).optional(),
 });
 export type ScheduleQuery = z.infer<typeof ScheduleQuerySchema>;
 

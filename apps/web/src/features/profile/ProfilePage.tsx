@@ -1,3 +1,4 @@
+import { retryHint } from "../../api";
 import { useProfile } from "../../api/hooks";
 import { Card, CardTitle, ErrorState, PageHeader, Skeleton } from "../../ui";
 import { LogoutButton } from "../auth/LogoutButton";
@@ -28,7 +29,7 @@ export function ProfilePage() {
           <Skeleton className="h-56 w-full rounded-lg" />
         </div>
       ) : profile.isError ? (
-        <ErrorState onRetry={() => profile.refetch()} />
+        <ErrorState description={retryHint(profile.error)} onRetry={() => profile.refetch()} />
       ) : (
         <div className="flex flex-col gap-4">
           <Card>

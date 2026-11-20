@@ -99,11 +99,14 @@ describe("GET /api/me/schedule", () => {
     expect(next.lessons.every((l) => l.date >= next.weekStart)).toBe(true);
   });
 
-  it("невалидный week → 400 validation", async () => {
-    const res = await get(`${routes.me.schedule.path}?week=19.11.2026`, "student");
-    expect(res.status).toBe(400);
-    expect(ApiErrorSchema.parse(await res.json()).error.code).toBe("validation");
-  });
+  it.each(["19.11.2026", "9999-12-27", "1899-01-02"])(
+    "невалидный week (%s) → 400 validation",
+    async (week) => {
+      const res = await get(`${routes.me.schedule.path}?week=${week}`, "student");
+      expect(res.status).toBe(400);
+      expect(ApiErrorSchema.parse(await res.json()).error.code).toBe("validation");
+    },
+  );
 
   it("без сессии → 401, сотруднику → 403", async () => {
     expect((await get(routes.me.schedule.path, null)).status).toBe(401);

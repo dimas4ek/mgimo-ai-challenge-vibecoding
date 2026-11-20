@@ -1,7 +1,7 @@
 import { REQUEST_CATEGORY, type Request } from "@aihs/contract";
 import { ArrowLeft, CircleCheck, FileQuestion, Printer } from "lucide-react";
 import { Link, useLocation, useParams } from "react-router";
-import { isApiError, useRequest } from "../../api";
+import { isApiError, retryHint, useRequest } from "../../api";
 import { paths } from "../../app/paths";
 import { cn } from "../../lib/cn";
 import { buttonVariants, Card, CardTitle, EmptyState, ErrorState, ListSkeleton } from "../../ui";
@@ -53,7 +53,7 @@ export function RequestPage() {
         ) : (
           <>
             <h1 className="sr-only">Заявка</h1>
-            <ErrorState onRetry={() => query.refetch()} />
+            <ErrorState description={retryHint(query.error)} onRetry={() => query.refetch()} />
           </>
         )
       ) : (

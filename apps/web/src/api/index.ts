@@ -1,5 +1,5 @@
 // Единственный способ фронта получать данные (.claude/rules/frontend-ui.md). Импорты из apps/api запрещены.
-export { ApiClientError, api, call, isApiError } from "./client";
+export { ApiClientError, api, call, isApiError, retryHint } from "./client";
 export {
   createQueryClient,
   queryKeys,
