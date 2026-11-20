@@ -52,7 +52,9 @@ const subjects = {
   ml: "Машинное обучение",
   nlp: "Обработка естественного языка",
   ethics: "Этика искусственного интеллекта",
-  prob: "Теория вероятностей и статистика",
+  prob: "Теория вероятностей и статистика, ч. 2",
+  prob1: "Теория вероятностей и статистика, ч. 1",
+  philosophy: "Философия науки",
   cv: "Компьютерное зрение",
   calculus: "Математический анализ",
   linalg: "Линейная алгебра",
@@ -307,8 +309,9 @@ type GradeDef = Pick<
   /**
    * Экзамен или зачёт: `day` — сдвиг в днях от начала сессии (экзамены внутри сессии,
    * зачёты — отрицательный сдвиг, в последнюю неделю перед ней); `null` — дата не назначена.
+   * `early` — сдан досрочно: сдвиг считается от понедельника текущей недели, дата уже прошла.
    */
-  exam: { day: number; start: string; room: string } | null;
+  exam: { day: number; start: string; room: string; early?: true } | null;
 };
 
 const grades: Record<StudentDef["user"], GradeDef[]> = {
@@ -331,7 +334,7 @@ const grades: Record<StudentDef["user"], GradeDef[]> = {
       semesterPoints: 41,
       examPoints: 30,
       result: "good",
-      exam: { day: -4, start: "12:00", room: "Б-108" },
+      exam: { day: -3, start: "12:00", room: "Б-108", early: true },
     },
     {
       subject: "ethics",
@@ -341,7 +344,7 @@ const grades: Record<StudentDef["user"], GradeDef[]> = {
       semesterPoints: 58,
       examPoints: 35,
       result: "passed",
-      exam: { day: -6, start: "14:00", room: "Б-305" },
+      exam: { day: -5, start: "14:00", room: "Б-305", early: true },
     },
     {
       subject: "prob",
@@ -349,8 +352,8 @@ const grades: Record<StudentDef["user"], GradeDef[]> = {
       controlForm: "exam",
       credits: 4,
       semesterPoints: 22,
-      examPoints: 15,
-      result: "unsatisfactory",
+      examPoints: null,
+      result: "pending",
       exam: { day: 8, start: "09:00", room: "А-301" },
     },
     {
@@ -393,7 +396,7 @@ const grades: Record<StudentDef["user"], GradeDef[]> = {
       semesterPoints: 55,
       examPoints: 33,
       result: "excellent",
-      exam: { day: -3, start: "10:00", room: "К-201" },
+      exam: { day: -4, start: "10:00", room: "К-201", early: true },
     },
     {
       subject: "databases",
@@ -413,17 +416,64 @@ const grades: Record<StudentDef["user"], GradeDef[]> = {
       semesterPoints: 51,
       examPoints: 30,
       result: "passed",
-      exam: { day: -2, start: "11:30", room: "Л-17" },
+      exam: { day: -2, start: "11:30", room: "Л-17", early: true },
     },
   ],
   staff: [],
 };
 
-/** Дата экзамена по сдвигу от начала сессии; воскресенье сдвигается: экзамен — на понедельник, зачёт — на субботу. */
-function examDate(sessionStart: string, day: number): string {
-  const date = addDays(sessionStart, day);
+/**
+ * Оценки прошлого семестра (весенний предыдущего учебного года). У `student` там долг по ч. 1
+ * теорвера — на него заявление на пересдачу. `student2` на первом курсе, прошлых семестров у него нет.
+ */
+const pastGrades: Record<StudentDef["user"], GradeDef[]> = {
+  student: [
+    {
+      subject: "prob1",
+      teacher: "zaretsky",
+      controlForm: "exam",
+      credits: 4,
+      semesterPoints: 25,
+      examPoints: 12,
+      result: "unsatisfactory",
+      exam: { day: 5, start: "10:00", room: "А-301" },
+    },
+    {
+      subject: "philosophy",
+      teacher: "karimova",
+      controlForm: "credit",
+      credits: 2,
+      semesterPoints: 48,
+      examPoints: 26,
+      result: "passed",
+      exam: { day: -3, start: "14:00", room: "Б-305" },
+    },
+  ],
+  student2: [],
+  staff: [],
+};
+
+/** Дата экзамена по сдвигу от начала сессии (у досрочных — от понедельника текущей недели); воскресенье сдвигается: экзамен — на понедельник, зачёт — на субботу. */
+function examDate(base: string, day: number): string {
+  const date = addDays(base, day);
   const isSunday = addDays(mondayOf(date), 6) === date;
   return isSunday ? addDays(date, day < 0 ? -1 : 1) : date;
+}
+
+/** Весенний семестр предыдущего учебного года относительно текущего семестра. */
+function previousSemester(
+  current: Insert<typeof schema.semesters>,
+): Insert<typeof schema.semesters> {
+  // Текущий учебный год 2026/27 (осень или весна) → прошлый весенний семестр 2025/26, сессия в июне 2026.
+  const year = Number(/(\d{4})\//.exec(current.name)?.[1]);
+  const yy = (y: number) => String(y % 100).padStart(2, "0");
+  return {
+    id: seedId(`semester:spring:${year}`),
+    name: `Весенний семестр ${year - 1}/${yy(year)}`,
+    sessionStart: `${year}-06-08`,
+    sessionEnd: `${year}-06-30`,
+    isCurrent: false,
+  };
 }
 
 /** Текущий семестр по московской дате: сентябрь–январь — осенний, февраль–август — весенний. */
@@ -587,7 +637,6 @@ export function buildSeedData(
   }
 
   const semester = currentSemester(today);
-  const semesterId = semester.id as string;
 
   const studentRows: SeedData["students"] = students.map((s) => ({
     id: id.student(s.user),
@@ -600,11 +649,15 @@ export function buildSeedData(
     email: s.email,
   }));
 
+  const pastSemester = previousSemester(semester);
   const gradeRows: SeedData["grades"] = students.flatMap((s) =>
-    grades[s.user].map((g) => ({
-      id: seedId(`grade:${s.user}:${semesterId}:${g.subject}`),
+    [
+      ...grades[s.user].map((g) => ({ g, sem: semester })),
+      ...pastGrades[s.user].map((g) => ({ g, sem: pastSemester })),
+    ].map(({ g, sem }) => ({
+      id: seedId(`grade:${s.user}:${sem.id}:${g.subject}`),
       studentId: id.student(s.user),
-      semesterId,
+      semesterId: sem.id as string,
       subjectId: id.subject(g.subject),
       teacherId: id.teacher(g.teacher),
       controlForm: g.controlForm,
@@ -613,7 +666,9 @@ export function buildSeedData(
       examPoints: g.examPoints,
       result: g.result,
       examDate:
-        g.exam && semester.sessionStart ? examDate(semester.sessionStart, g.exam.day) : null,
+        g.exam && sem.sessionStart
+          ? examDate(g.exam.early ? monday : sem.sessionStart, g.exam.day)
+          : null,
       examStart: g.exam?.start ?? null,
       examRoom: g.exam?.room ?? null,
     })),
@@ -647,7 +702,7 @@ export function buildSeedData(
       key: "s1-retake",
       student: "student",
       type: "retake_application",
-      comment: "Пересдача: Теория вероятностей и статистика",
+      comment: "Пересдача: Теория вероятностей и статистика, ч. 1 (долг с весенней сессии)",
       history: [
         { status: "submitted", hoursAgo: 26 },
         { status: "in_review", hoursAgo: 12 },
@@ -837,7 +892,7 @@ export function buildSeedData(
     })),
     lessons,
     lessonChanges,
-    semesters: [semester],
+    semesters: [pastSemester, semester],
     grades: gradeRows,
     requests: requestRows,
     requestHistory,

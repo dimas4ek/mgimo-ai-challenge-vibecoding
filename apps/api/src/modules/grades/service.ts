@@ -1,7 +1,8 @@
 import type { DisciplineGrade, Grades, GradesSummary, PastDebt } from "@aihs/contract";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray, ne, type SQL } from "drizzle-orm";
 import type { Db } from "../../db/client";
 import * as schema from "../../db/schema";
+import { semesterOrder } from "../../lib/semester-order";
 
 const POSITIVE = new Set<DisciplineGrade["result"]>([
   "excellent",
@@ -31,8 +32,9 @@ export function summarize(
 }
 
 /**
- * Успеваемость студента из сессии за текущий семестр: дисциплины с баллами БРС и датами экзаменов, сроки сессии
- * и сводка. Студента или текущего семестра нет → `null` (→ 404).
+ * Успеваемость студента из сессии за текущий семестр: дисциплины с баллами БРС и датами
+ * экзаменов, сроки сессии, долги прошлых семестров и сводка (долги в ней — вместе с прошлыми).
+ * Студента или текущего семестра нет → `null` (→ 404).
  */
 export async function getGrades(db: Db, studentId: string): Promise<Grades | null> {
   const [student] = await db
@@ -46,9 +48,39 @@ export async function getGrades(db: Db, studentId: string): Promise<Grades | nul
     .where(eq(schema.semesters.isCurrent, true));
   if (!semester) return null;
 
+  const current = await gradeRows(
+    db,
+    and(eq(schema.grades.studentId, studentId), eq(schema.grades.semesterId, semester.id)),
+  );
+  const disciplines: DisciplineGrade[] = current.map(({ semester: _semester, ...d }) => d);
+  const pastDebts: PastDebt[] = (
+    await gradeRows(
+      db,
+      and(
+        eq(schema.grades.studentId, studentId),
+        ne(schema.grades.semesterId, semester.id),
+        inArray(schema.grades.result, [...DEBT]),
+      ),
+    )
+  ).sort((a, b) => semesterOrder(a.semester) - semesterOrder(b.semester));
+  return {
+    semester: semester.name,
+    session:
+      semester.sessionStart && semester.sessionEnd
+        ? { startDate: semester.sessionStart, endDate: semester.sessionEnd }
+        : null,
+    disciplines,
+    pastDebts,
+    summary: summarize(disciplines, pastDebts),
+  };
+}
+
+/** Строки успеваемости по условию: с названием семестра, по алфавиту дисциплин. */
+async function gradeRows(db: Db, where: SQL | undefined): Promise<PastDebt[]> {
   const rows = await db
     .select({
       id: schema.grades.id,
+      semester: schema.semesters.name,
       subject: schema.subjects.name,
       teacher: schema.teachers.fullName,
       controlForm: schema.grades.controlForm,
@@ -61,12 +93,12 @@ export async function getGrades(db: Db, studentId: string): Promise<Grades | nul
       examRoom: schema.grades.examRoom,
     })
     .from(schema.grades)
+    .innerJoin(schema.semesters, eq(schema.semesters.id, schema.grades.semesterId))
     .innerJoin(schema.subjects, eq(schema.subjects.id, schema.grades.subjectId))
     .innerJoin(schema.teachers, eq(schema.teachers.id, schema.grades.teacherId))
-    .where(and(eq(schema.grades.studentId, studentId), eq(schema.grades.semesterId, semester.id)))
+    .where(where)
     .orderBy(asc(schema.subjects.name), asc(schema.grades.id));
-
-  const disciplines: DisciplineGrade[] = rows.map(({ examDate, examStart, examRoom, ...r }) => ({
+  return rows.map(({ examDate, examStart, examRoom, ...r }) => ({
     ...r,
     totalPoints: r.semesterPoints + (r.examPoints ?? 0),
     exam:
@@ -74,14 +106,4 @@ export async function getGrades(db: Db, studentId: string): Promise<Grades | nul
         ? { date: examDate, start: examStart, room: examRoom }
         : null,
   }));
-  return {
-    semester: semester.name,
-    session:
-      semester.sessionStart && semester.sessionEnd
-        ? { startDate: semester.sessionStart, endDate: semester.sessionEnd }
-        : null,
-    disciplines,
-    pastDebts: [],
-    summary: summarize(disciplines),
-  };
 }
