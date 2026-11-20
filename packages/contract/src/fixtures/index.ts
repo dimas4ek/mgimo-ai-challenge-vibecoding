@@ -16,6 +16,8 @@ const ids = {
   request1: "9a8b7c6d-5e4f-4a3b-9c2d-1e0f2a3b4c01",
   request2: "9a8b7c6d-5e4f-4a3b-9c2d-1e0f2a3b4c02",
   request3: "9a8b7c6d-5e4f-4a3b-9c2d-1e0f2a3b4c03",
+  /** Готовая выписка с оценками: только справка, в списке заявок её нет. */
+  request4: "9a8b7c6d-5e4f-4a3b-9c2d-1e0f2a3b4c04",
 } as const;
 
 const meStudent: Me = { id: ids.student, role: "student", displayName: "Мирослава Лебедянская" };
@@ -227,6 +229,63 @@ const certificate: Certificate = {
     group: profile.group,
   },
   purpose: "Для предоставления по месту работы родителей",
+  grades: null,
+};
+
+const transcriptToken = "Hn3Rk8VqT1yLc6ZpW0sXb4MdF9GjA2EuK7oIrYtQvBm";
+
+/** Выписка с оценками по заявке request4: оценки — снимок на дату выдачи. */
+const transcriptCertificate: Certificate = {
+  ...certificate,
+  requestId: ids.request4,
+  type: "transcript",
+  number: "AIHS-2026-9B2E07",
+  issuedAt: "2026-11-17T10:05:00.000Z",
+  token: transcriptToken,
+  verifyPath: `/verify/${transcriptToken}`,
+  purpose: "Для стажировки в лаборатории",
+  grades: [
+    {
+      semester: "Весенний семестр 2025/26",
+      subject: "Глубокое обучение",
+      controlForm: "exam",
+      credits: 5,
+      totalPoints: 88,
+      result: "excellent",
+    },
+    {
+      semester: "Весенний семестр 2025/26",
+      subject: "Теория вероятностей и статистика, ч. 1",
+      controlForm: "exam",
+      credits: 4,
+      totalPoints: 37,
+      result: "unsatisfactory",
+    },
+    {
+      semester: "Весенний семестр 2025/26",
+      subject: "Философия науки",
+      controlForm: "credit",
+      credits: 2,
+      totalPoints: 74,
+      result: "passed",
+    },
+    {
+      semester: "Осенний семестр 2026/27",
+      subject: "Машинное обучение",
+      controlForm: "exam",
+      credits: 5,
+      totalPoints: 52,
+      result: "pending",
+    },
+    {
+      semester: "Осенний семестр 2026/27",
+      subject: "Обработка естественного языка",
+      controlForm: "graded_credit",
+      credits: 4,
+      totalPoints: 71,
+      result: "good",
+    },
+  ],
 };
 
 /** Что видит любой, кто отсканировал QR этой справки. */
@@ -305,10 +364,10 @@ export const fixtures = {
   notifications,
   staffRequests,
   /** Справки по id заявки; заявка не справка или не готова → `undefined` (API отвечает 404). */
-  certificateByRequestId: { [ids.request1]: certificate } as Record<
-    string,
-    Certificate | undefined
-  >,
+  certificateByRequestId: {
+    [ids.request1]: certificate,
+    [ids.request4]: transcriptCertificate,
+  } as Record<string, Certificate | undefined>,
   /** Проверка по токену; неизвестный токен → `undefined` (API отвечает 404). */
   verificationByToken: { [certificateToken]: certificateVerification } as Record<
     string,

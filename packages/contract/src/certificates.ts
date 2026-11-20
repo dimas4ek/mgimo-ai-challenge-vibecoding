@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { IdSchema, IsoDateSchema, IsoDateTimeSchema } from "./common";
+import { BRS_MAX, ControlFormSchema, GradeResultSchema } from "./grades";
 import { RequestTypeSchema } from "./requests";
 
 /**
@@ -8,6 +9,23 @@ import { RequestTypeSchema } from "./requests";
  */
 export const CertificateTokenSchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/, "неверный токен");
 export type CertificateToken = z.infer<typeof CertificateTokenSchema>;
+
+/**
+ * Строка оценок в выписке: снимок на момент выдачи справки. Если оценка потом изменится,
+ * в уже выданной справке остаётся старое значение.
+ */
+export const CertificateGradeSchema = z.object({
+  /** «Осенний семестр 2026/27». */
+  semester: z.string().min(1),
+  subject: z.string().min(1),
+  controlForm: ControlFormSchema,
+  /** Трудоёмкость, з. е. */
+  credits: z.number().int().min(1).max(30),
+  /** Итоговый балл, 0–100. */
+  totalPoints: z.number().min(0).max(BRS_MAX.total),
+  result: GradeResultSchema,
+});
+export type CertificateGrade = z.infer<typeof CertificateGradeSchema>;
 
 /**
  * Справка для печати, `GET /api/me/certificates/:requestId`. Есть только у заявки-справки
@@ -35,6 +53,11 @@ export const CertificateSchema = z.object({
   }),
   /** Куда нужна справка — комментарий студента из заявки. */
   purpose: z.string().nullable(),
+  /**
+   * Оценки на дату выдачи, все семестры студента по порядку. Массив только у выписки
+   * (`transcript`), у остальных типов `null`. В публичную проверку не попадает.
+   */
+  grades: z.array(CertificateGradeSchema).nullable(),
 });
 export type Certificate = z.infer<typeof CertificateSchema>;
 
