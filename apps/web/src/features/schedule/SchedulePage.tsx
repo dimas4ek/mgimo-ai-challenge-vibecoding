@@ -2,7 +2,7 @@ import type { Lesson, WeekSchedule } from "@aihs/contract";
 import { CalendarCheck, CalendarX, ChevronLeft, ChevronRight } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
-import { useSchedule } from "../../api";
+import { retryHint, useSchedule } from "../../api";
 import { cn } from "../../lib/cn";
 import { Badge, Button, EmptyState, ErrorState, ListSkeleton, PageHeader } from "../../ui";
 import { LessonCard } from "./LessonCard";
@@ -124,7 +124,8 @@ function WeekQuery({
 }) {
   const query = useSchedule(week);
   if (query.isPending) return <ListSkeleton rows={3} label="Загружаем расписание…" />;
-  if (query.isError) return <ErrorState onRetry={() => query.refetch()} />;
+  if (query.isError)
+    return <ErrorState description={retryHint(query.error)} onRetry={() => query.refetch()} />;
   return <>{children(query.data)}</>;
 }
 

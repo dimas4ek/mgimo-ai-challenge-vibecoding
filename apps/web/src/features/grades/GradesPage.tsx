@@ -1,5 +1,6 @@
 import { BRS_MAX, type DisciplineGrade, type Grades } from "@aihs/contract";
 import { CalendarClock, CircleAlert, CircleCheck, Clock, GraduationCap } from "lucide-react";
+import { retryHint } from "../../api";
 import { useGrades } from "../../api/hooks";
 import { cn } from "../../lib/cn";
 import { Badge, Card, CardTitle, EmptyState, ErrorState, PageHeader, Skeleton } from "../../ui";
@@ -155,7 +156,7 @@ export function GradesPage({ now = new Date() }: { now?: Date }) {
           <Skeleton className="h-40 w-full rounded-lg" />
         </div>
       ) : grades.isError ? (
-        <ErrorState onRetry={() => grades.refetch()} />
+        <ErrorState description={retryHint(grades.error)} onRetry={() => grades.refetch()} />
       ) : grades.data.disciplines.length === 0 ? (
         <EmptyState
           icon={GraduationCap}

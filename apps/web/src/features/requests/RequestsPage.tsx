@@ -1,7 +1,7 @@
 import { type RequestListItem, RequestTypeSchema } from "@aihs/contract";
 import { ChevronRight, FilePlus, FileText } from "lucide-react";
 import { Link, useSearchParams } from "react-router";
-import { useRequests } from "../../api";
+import { retryHint, useRequests } from "../../api";
 import { paths } from "../../app/paths";
 import { Button, EmptyState, ErrorState, ListSkeleton, PageHeader } from "../../ui";
 import { formatDateTime, requestTypeLabel, sortRequests } from "./model";
@@ -46,7 +46,8 @@ export function RequestsPage() {
 function RequestList({ onCreate }: { onCreate: () => void }) {
   const query = useRequests();
   if (query.isPending) return <ListSkeleton rows={3} label="Загружаем заявки…" />;
-  if (query.isError) return <ErrorState onRetry={() => query.refetch()} />;
+  if (query.isError)
+    return <ErrorState description={retryHint(query.error)} onRetry={() => query.refetch()} />;
   if (query.data.length === 0) {
     return (
       <EmptyState

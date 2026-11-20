@@ -1,7 +1,7 @@
 import { LoginInputSchema } from "@aihs/contract";
 import { type FormEvent, useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
-import { isApiError } from "../../api/client";
+import { isApiError, retryHint } from "../../api/client";
 import { useLogin, useMe } from "../../api/hooks";
 import { Disclaimer, Logo } from "../../app/brand";
 import { homeOf, safeNext } from "../../app/guards";
@@ -13,7 +13,7 @@ type FieldErrors = { login?: string; password?: string };
 export function loginErrorText(error: unknown): string {
   if (isApiError(error, 401)) return "Неверный логин или пароль.";
   if (isApiError(error, 429)) return "Слишком много попыток. Подождите минуту и попробуйте снова.";
-  return "Не удалось войти. Проверьте интернет и попробуйте ещё раз.";
+  return `Не удалось войти. ${retryHint(error)}`;
 }
 
 /** Экран входа: логин и пароль, ошибки на месте, кнопка блокируется на время запроса. */

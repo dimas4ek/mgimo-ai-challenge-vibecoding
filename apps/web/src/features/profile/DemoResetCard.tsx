@@ -1,6 +1,6 @@
 import { CircleCheck, RotateCcw } from "lucide-react";
 import { useState } from "react";
-import { useDemoReset } from "../../api";
+import { retryHint, useDemoReset } from "../../api";
 import { Button, Card, CardDescription, CardTitle } from "../../ui";
 
 /**
@@ -54,7 +54,7 @@ export function DemoResetCard() {
         )}
         {reset.isError && (
           <p role="alert" className="mt-3 text-sm font-medium text-danger">
-            Не получилось сбросить. Проверьте интернет и попробуйте ещё раз.
+            Не получилось сбросить. {retryHint(reset.error)}
           </p>
         )}
       </div>

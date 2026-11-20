@@ -119,10 +119,14 @@ describe("вход", () => {
     expect((button as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it("тексты ошибок: 401, 429, сеть", () => {
+  it("тексты ошибок: 401, 429, сеть, сбой сервера", () => {
     expect(loginErrorText(new ApiClientError(401, "unauthorized", "x"))).toMatch(/Неверный/);
     expect(loginErrorText(new ApiClientError(429, "rate_limited", "x"))).toMatch(/попыток/);
     expect(loginErrorText(new TypeError("fetch failed"))).toMatch(/интернет/);
+    expect(loginErrorText(new ApiClientError(0, "network", "x"))).toMatch(/интернет/);
+    const server = loginErrorText(new ApiClientError(500, "internal", "x"));
+    expect(server).not.toMatch(/интернет/);
+    expect(server).toMatch(/сервер/i);
   });
 
   it("safeNext не пускает на чужие сайты и на сам вход", () => {

@@ -1,6 +1,7 @@
 import type { Role } from "@aihs/contract";
 import type { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router";
+import { retryHint } from "../api/client";
 import { useMe } from "../api/hooks";
 import { ErrorState, ListSkeleton } from "../ui";
 import { paths } from "./paths";
@@ -42,7 +43,7 @@ export function RequireRole({ allow, children }: { allow: Role; children: ReactN
     return (
       <ErrorState
         title="Не удалось связаться с сервером"
-        description="Проверьте подключение к интернету."
+        description={retryHint(me.error)}
         onRetry={() => me.refetch()}
       />
     );

@@ -1,6 +1,6 @@
 import { ArrowLeft, FileQuestion, Printer } from "lucide-react";
 import { Link, useParams } from "react-router";
-import { isApiError, useCertificate } from "../../api";
+import { isApiError, retryHint, useCertificate } from "../../api";
 import { Disclaimer, Logo } from "../../app/brand";
 import { paths } from "../../app/paths";
 import { cn } from "../../lib/cn";
@@ -66,7 +66,7 @@ export function CertificatePage() {
         ) : (
           <>
             <h1 className="sr-only">Справка</h1>
-            <ErrorState onRetry={() => query.refetch()} />
+            <ErrorState description={retryHint(query.error)} onRetry={() => query.refetch()} />
           </>
         )
       ) : (

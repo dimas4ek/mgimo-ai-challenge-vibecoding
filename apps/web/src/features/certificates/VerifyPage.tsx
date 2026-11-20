@@ -1,7 +1,7 @@
 import { CertificateTokenSchema } from "@aihs/contract";
 import { CircleCheck, CircleX, ShieldQuestion } from "lucide-react";
 import { useParams } from "react-router";
-import { isApiError, useVerification } from "../../api";
+import { isApiError, retryHint, useVerification } from "../../api";
 import { Disclaimer, Logo } from "../../app/brand";
 import { Card, ErrorState, Skeleton } from "../../ui";
 import { requestTypeLabel } from "../requests/model";
@@ -38,7 +38,7 @@ function Result({ token }: { token: string }) {
     return (
       <>
         <h1 className="sr-only">Проверка справки</h1>
-        <ErrorState onRetry={() => query.refetch()} />
+        <ErrorState description={retryHint(query.error)} onRetry={() => query.refetch()} />
       </>
     );
   }

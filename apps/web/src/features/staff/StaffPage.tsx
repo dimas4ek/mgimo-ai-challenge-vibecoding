@@ -2,7 +2,7 @@ import type { StaffRequestItem } from "@aihs/contract";
 import { ArrowLeft, ChevronRight, CircleCheck, Inbox, SearchX } from "lucide-react";
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { useChangeRequestStatus, useStaffRequests } from "../../api";
+import { retryHint, useChangeRequestStatus, useStaffRequests } from "../../api";
 import { paths } from "../../app/paths";
 import { cn } from "../../lib/cn";
 import {
@@ -93,7 +93,8 @@ export function StaffPage() {
 function Queue({ filter, selectedId }: { filter: StaffFilter; selectedId: string | null }) {
   const query = useStaffRequests(filter === "all" ? undefined : { status: filter });
   if (query.isPending) return <ListSkeleton rows={4} label="Загружаем заявки…" />;
-  if (query.isError) return <ErrorState onRetry={() => query.refetch()} />;
+  if (query.isError)
+    return <ErrorState description={retryHint(query.error)} onRetry={() => query.refetch()} />;
   if (query.data.length === 0) {
     return (
       <EmptyState
@@ -164,7 +165,7 @@ function RequestPanel({ id, filter }: { id: string; filter: StaffFilter }) {
     return (
       <div className="flex flex-col gap-4">
         {back}
-        <ErrorState onRetry={() => query.refetch()} />
+        <ErrorState description={retryHint(query.error)} onRetry={() => query.refetch()} />
       </div>
     );
   }
@@ -285,7 +286,7 @@ function StatusForm({ item }: { item: StaffRequestItem }) {
           </Field>
           {change.isError && (
             <p role="alert" className="text-sm text-danger">
-              Не получилось сменить статус. Проверьте интернет и попробуйте ещё раз.
+              Не получилось сменить статус. {retryHint(change.error)}
             </p>
           )}
           <div className="flex flex-wrap gap-2">

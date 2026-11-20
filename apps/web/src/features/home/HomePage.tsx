@@ -11,7 +11,14 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
-import { useMarkRead, useMe, useNotifications, useRequests, useSchedule } from "../../api";
+import {
+  retryHint,
+  useMarkRead,
+  useMe,
+  useNotifications,
+  useRequests,
+  useSchedule,
+} from "../../api";
 import { paths } from "../../app/paths";
 import { cn } from "../../lib/cn";
 import { buttonVariants, ErrorState, ListSkeleton, PageHeader } from "../../ui";
@@ -89,7 +96,7 @@ function NextLessonBlock({ now }: { now: Date }) {
       {week.isPending ? (
         <ListSkeleton rows={1} label="Загружаем расписание…" />
       ) : week.isError ? (
-        <ErrorState onRetry={() => week.refetch()} />
+        <ErrorState description={retryHint(week.error)} onRetry={() => week.refetch()} />
       ) : lesson ? (
         <LessonCard
           lesson={lesson}
@@ -107,7 +114,8 @@ function NextLessonBlock({ now }: { now: Date }) {
 function NextWeekLesson({ now }: { now: Date }) {
   const week = useSchedule(addDays(moscowToday(now), 7));
   if (week.isPending) return <ListSkeleton rows={1} label="Загружаем расписание…" />;
-  if (week.isError) return <ErrorState onRetry={() => week.refetch()} />;
+  if (week.isError)
+    return <ErrorState description={retryHint(week.error)} onRetry={() => week.refetch()} />;
   const lesson = nextLesson(week.data.lessons, now);
   if (!lesson) {
     return (
@@ -170,7 +178,7 @@ function NotificationsBlock({ kind, now }: { kind: "deadlines" | "announcements"
       {query.isPending ? (
         <ListSkeleton rows={2} label="Загружаем уведомления…" />
       ) : query.isError ? (
-        <ErrorState onRetry={() => query.refetch()} />
+        <ErrorState description={retryHint(query.error)} onRetry={() => query.refetch()} />
       ) : items.length === 0 ? (
         <Quiet>{deadlines ? "Ближайших дедлайнов нет." : "Новых объявлений нет."}</Quiet>
       ) : (
@@ -198,7 +206,7 @@ function RequestsBlock({ now }: { now: Date }) {
       {query.isPending ? (
         <ListSkeleton rows={1} label="Загружаем заявки…" />
       ) : query.isError ? (
-        <ErrorState onRetry={() => query.refetch()} />
+        <ErrorState description={retryHint(query.error)} onRetry={() => query.refetch()} />
       ) : items.length === 0 ? (
         <Quiet
           action={

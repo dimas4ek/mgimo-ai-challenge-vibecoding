@@ -1,7 +1,7 @@
 import { REQUEST_CATEGORY, type RequestType } from "@aihs/contract";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { useCreateRequest } from "../../api";
+import { retryHint, useCreateRequest } from "../../api";
 import { paths } from "../../app/paths";
 import { cn } from "../../lib/cn";
 import { Button, Card, Field, Textarea } from "../../ui";
@@ -166,7 +166,7 @@ export function NewRequestWizard({
 
       {create.isError && (
         <p role="alert" className="text-sm text-danger">
-          Не получилось отправить заявку. Проверьте интернет и попробуйте ещё раз.
+          Не получилось отправить заявку. {retryHint(create.error)}
         </p>
       )}
 

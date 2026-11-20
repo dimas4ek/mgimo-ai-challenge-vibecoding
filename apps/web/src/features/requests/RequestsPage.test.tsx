@@ -73,6 +73,10 @@ describe("RequestsPage", () => {
     );
     renderAt(paths.requests);
     expect(await screen.findByRole("button", { name: "Повторить" })).toBeTruthy();
+    // Сервер ответил 500 — интернет ни при чём.
+    const alert = screen.getByRole("alert").textContent ?? "";
+    expect(alert).not.toMatch(/интернет/);
+    expect(alert).toMatch(/сервер/i);
   });
 
   it("мастер: без выбора — ошибка; заявлению нужно пояснение; отправка блокирует кнопку и открывает карточку", async () => {

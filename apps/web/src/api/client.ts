@@ -19,6 +19,16 @@ export class ApiClientError extends Error {
 export const isApiError = (e: unknown, status?: number): e is ApiClientError =>
   e instanceof ApiClientError && (status === undefined || e.status === status);
 
+/**
+ * Что посоветовать после ошибки. Нет связи — проверить интернет; сервер ответил ошибкой —
+ * интернет ни при чём, просим попробовать позже. Неизвестную ошибку считаем сетевой.
+ */
+export function retryHint(error: unknown): string {
+  return isApiError(error) && error.code !== "network"
+    ? "На сервере что-то пошло не так. Попробуйте чуть позже."
+    : "Проверьте интернет и попробуйте ещё раз.";
+}
+
 type Body<R extends RouteDef> = R["body"] extends z.ZodType ? z.input<R["body"]> : never;
 type Query<R extends RouteDef> = R["query"] extends z.ZodType ? z.input<R["query"]> : never;
 type Output<R extends RouteDef> = z.output<R["response"]>;
