@@ -1,5 +1,5 @@
 // Чистая логика справок без React: даты по Москве и адрес страницы проверки для QR.
-import type { RequestType } from "@aihs/contract";
+import type { CertificateGrade, RequestType } from "@aihs/contract";
 
 const dateMsk = new Intl.DateTimeFormat("ru-RU", {
   day: "numeric",
@@ -37,6 +37,19 @@ const statement: Partial<Record<RequestType, string>> = {
 /** Текст справки под заголовком: у каждого типа своё назначение. */
 export function certificateStatement(type: RequestType): string {
   return statement[type] ?? enrolled;
+}
+
+/** Оценки выписки по семестрам в порядке из API (он уже хронологический). */
+export function groupBySemester(
+  grades: readonly CertificateGrade[],
+): { semester: string; items: CertificateGrade[] }[] {
+  const groups: { semester: string; items: CertificateGrade[] }[] = [];
+  for (const g of grades) {
+    const last = groups.at(-1);
+    if (last?.semester === g.semester) last.items.push(g);
+    else groups.push({ semester: g.semester, items: [g] });
+  }
+  return groups;
 }
 
 /** Полный адрес страницы проверки для QR: origin сайта + `verifyPath` из API. */
