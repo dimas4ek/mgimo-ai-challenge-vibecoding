@@ -10,7 +10,7 @@ import { createQueryClient } from "../../api/hooks";
 import { paths } from "../../app/paths";
 import { handlers, resetMockDb } from "../../mocks/handlers";
 import { CertificatePage } from "./CertificatePage";
-import { formatIssuedAt, formatIssuedOn, verifyUrl } from "./model";
+import { certificateStatement, formatIssuedAt, formatIssuedOn, verifyUrl } from "./model";
 import { VerifyPage } from "./VerifyPage";
 
 const cert = fixtures.certificateByRequestId[fixtures.ids.request1];
@@ -24,6 +24,19 @@ describe("модель справок", () => {
     expect(verifyUrl("/verify/abc", "https://aihs.example")).toBe(
       "https://aihs.example/verify/abc",
     );
+  });
+
+  it("у каждого типа справки свой текст", () => {
+    const types = [
+      "enrollment_certificate",
+      "scholarship_certificate",
+      "military_registration_certificate",
+      "transcript",
+    ] as const;
+    const texts = types.map(certificateStatement);
+    expect(new Set(texts).size).toBe(types.length);
+    expect(certificateStatement("military_registration_certificate")).toMatch(/военн/);
+    expect(certificateStatement("scholarship_certificate")).toMatch(/стипенди/);
   });
 });
 
@@ -60,6 +73,7 @@ describe("справка для печати", () => {
       await screen.findByRole("heading", { level: 1, name: "Справка об обучении" }),
     ).toBeTruthy();
     expect(screen.getByText(cert.student.fullName)).toBeTruthy();
+    expect(screen.getByText(certificateStatement(cert.type))).toBeTruthy();
     expect(screen.getByText(`№ ${cert.number}`, { exact: false })).toBeTruthy();
     expect(screen.getByRole("img", { name: /QR-код для проверки/ })).toBeTruthy();
     expect(screen.getByText(new URL(cert.verifyPath, location.href).toString())).toBeTruthy();
@@ -72,6 +86,19 @@ describe("справка для печати", () => {
     open(paths.certificate(fixtures.ids.request2));
     expect(await screen.findByText("Справки пока нет")).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Печать/ })).toBeNull();
+  });
+
+  it("заявку отклонили — не обещаем, что справка появится", async () => {
+    const request = fixtures.requestById[fixtures.ids.request2];
+    server.use(
+      http.get(routes.me.requests.get.path, () =>
+        HttpResponse.json({ ...request, status: "rejected" }),
+      ),
+    );
+    open(paths.certificate(fixtures.ids.request2));
+    expect(await screen.findByText("Справки не будет")).toBeTruthy();
+    expect(screen.getByText(/Заявку отклонили/)).toBeTruthy();
+    expect(screen.queryByText(/появится/)).toBeNull();
   });
 
   it("ошибка сервера — «Повторить»", async () => {
