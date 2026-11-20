@@ -75,7 +75,12 @@ export const routeTree: RouteObject[] = [
   // Вне AppShell: вход, публичная проверка справки, печатная форма.
   { path: paths.login, element: <LoginPage />, errorElement: <RouteError /> },
   { path: paths.verifyPattern, element: <VerifyPage />, errorElement: <RouteError /> },
-  { path: paths.certificatePattern, element: <CertificatePage />, errorElement: <RouteError /> },
+  // Печатная справка — без AppShell, но только для вошедшего студента.
+  {
+    element: studentOnly,
+    errorElement: <RouteError />,
+    children: [{ path: paths.certificatePattern, element: <CertificatePage /> }],
+  },
   {
     element: <AppShell />,
     errorElement: <RouteError />,

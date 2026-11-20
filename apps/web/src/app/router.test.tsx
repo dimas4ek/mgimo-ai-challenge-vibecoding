@@ -38,11 +38,16 @@ const shellPages: [string, string][] = [
   ["/no-such-page", "Страница не найдена"],
 ];
 
-/** Страницы без AppShell: вход, проверка справки, печатная форма. */
+/** Страницы без AppShell: вход, проверка справки, печатная форма (последняя — только студенту). */
 const barePages: [string, string][] = [
   [paths.login, "Вход"],
-  [paths.verify("tok"), "Проверка справки"],
-  [paths.certificate("9a8b7c6d-5e4f-4a3b-9c2d-1e0f2a3b4c01"), "Справка"],
+  // Токен неверного формата: на сервер не идём, сразу «не найдена».
+  [paths.verify("tok"), "Справка не найдена"],
+  [
+    paths.verify(fixtures.certificateByRequestId[fixtures.ids.request1]?.token ?? ""),
+    "Проверка справки",
+  ],
+  [paths.certificate(fixtures.ids.request1), "Справка"],
 ];
 
 describe("роутер", () => {
@@ -55,7 +60,7 @@ describe("роутер", () => {
   });
 
   it.each(barePages)("%s — без AppShell, один h1 «%s», дисклеймер на месте", (url, title) => {
-    const html = renderAt(url, null);
+    const html = renderAt(url, url.endsWith("/certificate") ? fixtures.me.student : null);
     expect(h1(html)).toEqual([title]);
     expect(html).not.toContain('aria-label="Разделы"');
     expect(html).toContain("не официальный сервис");
