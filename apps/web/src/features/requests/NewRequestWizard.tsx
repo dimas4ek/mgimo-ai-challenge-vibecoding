@@ -45,6 +45,9 @@ export function NewRequestWizard({
   const [commentError, setCommentError] = useState<string | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const firstRender = useRef(true);
+  // `create.isPending` обновится только после перерисовки, а второй клик двойного клика
+  // приходит раньше. Флаг в ref ставится синхронно и не даёт отправить заявку дважды.
+  const sending = useRef(false);
 
   // При смене шага переводим фокус на его заголовок: скринридер и клавиатура не теряются.
   // biome-ignore lint/correctness/useExhaustiveDependencies: срабатывает именно на смену шага
@@ -75,13 +78,17 @@ export function NewRequestWizard({
   };
 
   const submit = () => {
-    if (!type || create.isPending) return;
+    if (!type || sending.current) return;
+    sending.current = true;
     const text = comment.trim();
     create.mutate(
       { type, comment: text === "" ? undefined : text },
       {
         onSuccess: (created) =>
           navigate(paths.request(created.id), { state: { created: true } satisfies CreatedState }),
+        onError: () => {
+          sending.current = false;
+        },
       },
     );
   };

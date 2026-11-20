@@ -129,9 +129,29 @@ describe("RequestsPage", () => {
     expect(await screen.findByText("Заявка отправлена.")).toBeTruthy();
   });
 
-  it("сбой отправки — понятная ошибка, мастер остаётся открытым", async () => {
+  it("двойной клик по «Отправить» создаёт одну заявку", async () => {
+    let posts = 0;
+    server.use(
+      http.post(routes.me.requests.create.path, () => {
+        posts += 1;
+        return undefined; // дальше — обычный хендлер моков
+      }),
+    );
+    renderAt(`${paths.requests}?new=1&type=transcript`);
+    click("Далее");
+    click("Далее");
+    const send = screen.getByRole("button", { name: "Отправить" });
+    fireEvent.click(send);
+    fireEvent.click(send);
+    expect(await screen.findByText("Заявка отправлена.")).toBeTruthy();
+    expect(posts).toBe(1);
+  });
+
+  it("сбой отправки — понятная ошибка, мастер остаётся открытым, можно отправить снова", async () => {
+    let posts = 0;
     server.use(
       http.post(routes.me.requests.create.path, async () => {
+        posts += 1;
         await delay(10);
         return HttpResponse.json({ error: { code: "internal", message: "сбой" } }, { status: 500 });
       }),
@@ -141,7 +161,10 @@ describe("RequestsPage", () => {
     click("Далее");
     click("Отправить");
     expect((await screen.findByRole("alert")).textContent).toMatch(/Не получилось отправить/);
-    expect(screen.getByRole("button", { name: "Отправить" })).toBeTruthy();
+    click("Отправить");
+    await screen.findByRole("button", { name: "Отправляем…" });
+    await screen.findByRole("button", { name: "Отправить" });
+    expect(posts).toBe(2);
   });
 
   it("«Отмена» закрывает мастер и возвращает список", async () => {
