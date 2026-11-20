@@ -96,6 +96,17 @@ export const handlers: HttpHandler[] = [
     () => requireStudent() ?? HttpResponse.json(fixtures.weekSchedule),
   ),
   http.get(routes.me.grades.path, () => requireStudent() ?? HttpResponse.json(fixtures.grades)),
+  http.get(routes.me.certificates.get.path, ({ params }) => {
+    const denied = requireStudent();
+    if (denied) return denied;
+    const cert = fixtures.certificateByRequestId[String(params.requestId)];
+    return cert ? HttpResponse.json(cert) : notFound();
+  }),
+  // Публичная проверка — без входа.
+  http.get(routes.public.certificates.verify.path, ({ params }) => {
+    const found = fixtures.verificationByToken[String(params.token)];
+    return found ? HttpResponse.json(found) : notFound();
+  }),
   http.post(routes.me.demoReset.path, () => {
     const denied = requireStudent();
     if (denied) return denied;

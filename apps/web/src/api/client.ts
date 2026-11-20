@@ -113,6 +113,16 @@ export const api = {
       list: (signal?: AbortSignal) => call(routes.me.notifications.list, { signal }),
       markRead: (id: string) => call(routes.me.notifications.markRead, { params: { id } }),
     },
+    certificates: {
+      get: (requestId: string, signal?: AbortSignal) =>
+        call(routes.me.certificates.get, { params: { requestId }, signal }),
+    },
+  },
+  public: {
+    certificates: {
+      verify: (token: string, signal?: AbortSignal) =>
+        call(routes.public.certificates.verify, { params: { token }, signal }),
+    },
   },
   staff: {
     requests: {

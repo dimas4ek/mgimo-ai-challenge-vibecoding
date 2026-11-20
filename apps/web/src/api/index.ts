@@ -3,6 +3,7 @@ export { ApiClientError, api, call, isApiError } from "./client";
 export {
   createQueryClient,
   queryKeys,
+  useCertificate,
   useChangeRequestStatus,
   useCreateRequest,
   useDemoReset,
@@ -17,4 +18,5 @@ export {
   useRequests,
   useSchedule,
   useStaffRequests,
+  useVerification,
 } from "./hooks";

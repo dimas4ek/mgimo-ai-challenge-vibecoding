@@ -24,6 +24,8 @@ export const queryKeys = {
   requests: ["requests"] as const,
   request: (id: string) => ["requests", id] as const,
   notifications: ["notifications"] as const,
+  certificate: (requestId: string) => ["certificate", requestId] as const,
+  verification: (token: string) => ["verification", token] as const,
   staffRequests: (query?: StaffRequestsQuery) => ["staff", "requests", query ?? {}] as const,
   staffAll: ["staff"] as const,
 } satisfies Record<string, QueryKey | ((...a: never[]) => QueryKey)>;
@@ -166,6 +168,25 @@ export function useMarkRead() {
   return useMutation({
     mutationFn: (id: string) => api.me.notifications.markRead(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.notifications }),
+  });
+}
+
+// ── справки ──────────────────────────────────────────────────────────────
+
+/** Справка для печати по готовой заявке-справке. Нет справки (не готова, чужая) — ошибка 404. */
+export function useCertificate(requestId: string) {
+  return useQuery({
+    queryKey: queryKeys.certificate(requestId),
+    queryFn: ({ signal }) => api.me.certificates.get(requestId, signal),
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+}
+
+/** Публичная проверка справки по токену из QR, без входа. Неизвестный токен — ошибка 404. */
+export function useVerification(token: string) {
+  return useQuery({
+    queryKey: queryKeys.verification(token),
+    queryFn: ({ signal }) => api.public.certificates.verify(token, signal),
   });
 }
 
