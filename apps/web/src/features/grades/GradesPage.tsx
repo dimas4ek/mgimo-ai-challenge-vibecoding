@@ -8,11 +8,14 @@ import { ForecastCard } from "./ForecastCard";
 import {
   controlFormLabel,
   disciplineState,
+  examLine,
   formatSessionRange,
+  nextExam,
   pluralDays,
   resultLabel,
   sessionPhase,
   sortForDisplay,
+  whenLabel,
 } from "./model";
 
 /** Полоса заполнения. Цифры всегда рядом текстом, полоса — только подсказка. */
@@ -53,6 +56,23 @@ function SessionLine({ session, now }: { session: NonNullable<Grades["session"]>
         Сессия {formatSessionRange(session)} · <span className="font-semibold">{when}</span>
       </span>
     </p>
+  );
+}
+
+/** Блок «Ближайший экзамен» (#33): скрыт, если дат нет или все экзамены уже прошли. */
+function NextExamCard({ disciplines, now }: { disciplines: DisciplineGrade[]; now: Date }) {
+  const next = nextExam(disciplines, now);
+  if (!next) return null;
+  return (
+    <Card aria-labelledby="next-exam-title" className="border-primary">
+      <p className="flex items-center gap-2 text-sm font-semibold text-primary">
+        <CalendarClock aria-hidden className="size-4" />
+        <span id="next-exam-title">Ближайший экзамен</span>
+        <span className="text-muted-foreground">· {whenLabel(next.daysLeft)}</span>
+      </p>
+      <h2 className="mt-2 text-lg font-semibold text-balance">{next.discipline.subject}</h2>
+      <p className="mt-0.5 text-sm">{examLine(next.discipline)}</p>
+    </Card>
   );
 }
 
@@ -114,6 +134,10 @@ function DisciplineCard({ d }: { d: DisciplineGrade }) {
         <p className="mt-0.5 text-sm text-muted-foreground">
           {controlFormLabel(d.controlForm)} · {d.credits} з. е. · {d.teacher}
         </p>
+        <p className="mt-1.5 flex items-start gap-1.5 text-sm">
+          <CalendarClock aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+          <span className={cn(!d.exam && "text-muted-foreground")}>{examLine(d)}</span>
+        </p>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
           <Badge tone={result.tone}>
             <Icon aria-hidden />
@@ -167,6 +191,7 @@ export function GradesPage({ now = new Date() }: { now?: Date }) {
         />
       ) : (
         <div className="flex flex-col gap-6">
+          <NextExamCard disciplines={grades.data.disciplines} now={now} />
           <Summary grades={grades.data} now={now} />
           <ForecastCard disciplines={grades.data.disciplines} />
           <section aria-labelledby="disciplines-title">
