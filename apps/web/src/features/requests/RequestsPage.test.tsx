@@ -9,6 +9,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { createQueryClient } from "../../api";
 import { paths } from "../../app/paths";
 import { handlers, resetMockDb } from "../../mocks/handlers";
+import { retakeLink } from "../grades/PastDebts";
 import { RequestPage } from "./RequestPage";
 import { RequestsPage } from "./RequestsPage";
 
@@ -169,6 +170,31 @@ describe("RequestsPage", () => {
     await screen.findByRole("button", { name: "Отправляем…" });
     await screen.findByRole("button", { name: "Отправить" });
     expect(posts).toBe(2);
+  });
+
+  it("ссылка от долга: тип «пересдача» выбран, пояснение заполнено дисциплиной; «Отмена» чистит адрес", async () => {
+    const router = renderAt(retakeLink("Теория вероятностей и статистика, ч. 1"));
+    expect(
+      (screen.getByRole("radio", { name: /Заявление на пересдачу/ }) as HTMLInputElement).checked,
+    ).toBe(true);
+    click("Далее");
+    expect((screen.getByRole("textbox") as HTMLTextAreaElement).value).toBe(
+      "Теория вероятностей и статистика, ч. 1",
+    );
+    click("Назад");
+    click("Отмена");
+    expect(router.state.location.search).toBe("");
+  });
+
+  it("слишком длинный comment в адресе не подставляется; без comment пояснение пустое", async () => {
+    const long = new URLSearchParams({ comment: "а".repeat(1001) });
+    renderAt(`${paths.requests}?new=1&type=retake_application&${long}`);
+    click("Далее");
+    expect((screen.getByRole("textbox") as HTMLTextAreaElement).value).toBe("");
+    cleanup();
+    renderAt(`${paths.requests}?new=1&type=retake_application`);
+    click("Далее");
+    expect((screen.getByRole("textbox") as HTMLTextAreaElement).value).toBe("");
   });
 
   it("«Отмена» закрывает мастер и возвращает список", async () => {

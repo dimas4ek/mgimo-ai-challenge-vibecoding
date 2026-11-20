@@ -4,18 +4,20 @@ import { Link, useSearchParams } from "react-router";
 import { retryHint, useRequests } from "../../api";
 import { paths } from "../../app/paths";
 import { Button, EmptyState, ErrorState, ListSkeleton, PageHeader } from "../../ui";
-import { formatDateTime, requestTypeLabel, sortRequests } from "./model";
+import { COMMENT_MAX, formatDateTime, requestTypeLabel, sortRequests } from "./model";
 import { NewRequestWizard } from "./NewRequestWizard";
 import { RequestStatusBadge } from "./RequestStatusBadge";
 
 /**
  * Заявки и справки: список со статусами и мастер подачи. Мастер открыт, когда в адресе `?new=1`
- * (можно с `&type=enrollment_certificate`), поэтому на него ведут ссылки с главной и из пустого списка.
+ * (можно с `&type=enrollment_certificate` и `&comment=…`), поэтому на него ведут ссылки с главной,
+ * из пустого списка и от долга в «Успеваемости». Слишком длинный `comment` из адреса не берём.
  */
 export function RequestsPage() {
   const [params, setParams] = useSearchParams();
   const creating = params.get("new") === "1";
   const preset = RequestTypeSchema.safeParse(params.get("type"));
+  const presetComment = params.get("comment") ?? "";
 
   const open = () => setParams({ new: "1" });
   const close = () => setParams({}, { replace: true });
@@ -35,7 +37,11 @@ export function RequestsPage() {
         }
       />
       {creating ? (
-        <NewRequestWizard initialType={preset.success ? preset.data : undefined} onCancel={close} />
+        <NewRequestWizard
+          initialType={preset.success ? preset.data : undefined}
+          initialComment={presetComment.length <= COMMENT_MAX ? presetComment : undefined}
+          onCancel={close}
+        />
       ) : (
         <RequestList onCreate={open} />
       )}

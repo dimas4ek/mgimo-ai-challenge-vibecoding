@@ -30,17 +30,20 @@ export type CreatedState = { created: true };
  */
 export function NewRequestWizard({
   initialType,
+  initialComment,
   onCancel,
 }: {
   /** Тип, выбранный заранее (ссылка `?new=1&type=…` с главной). */
   initialType?: RequestType;
+  /** Начальный текст пояснения (ссылка `&comment=…` от долга: название дисциплины). */
+  initialComment?: string;
   onCancel: () => void;
 }) {
   const navigate = useNavigate();
   const create = useCreateRequest();
   const [step, setStep] = useState<WizardStep>("type");
   const [type, setType] = useState<RequestType | null>(initialType ?? null);
-  const [comment, setComment] = useState("");
+  const [comment, setComment] = useState(initialComment ?? "");
   const [typeError, setTypeError] = useState<string | null>(null);
   const [commentError, setCommentError] = useState<string | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);

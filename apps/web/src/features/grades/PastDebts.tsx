@@ -5,8 +5,11 @@ import { paths } from "../../app/paths";
 import { Badge, buttonVariants, Card } from "../../ui";
 import { controlFormLabel, resultLabel } from "./model";
 
-/** Адрес мастера заявки с уже выбранной пересдачей. */
-export const retakeLink = `${paths.requests}?new=1&type=retake_application`;
+/** Адрес мастера заявки с уже выбранной пересдачей и дисциплиной в пояснении (#40). */
+export function retakeLink(subject: string): string {
+  const query = new URLSearchParams({ new: "1", type: "retake_application", comment: subject });
+  return `${paths.requests}?${query}`;
+}
 
 /**
  * Долги прошлых сессий (#34): над дисциплинами текущего семестра. Долгов нет — блока нет.
@@ -45,7 +48,7 @@ export function PastDebts({ debts }: { debts: readonly PastDebt[] }) {
                   </span>
                 </div>
                 <Link
-                  to={retakeLink}
+                  to={retakeLink(d.subject)}
                   className={buttonVariants({ variant: "outline", block: true, className: "mt-4" })}
                 >
                   <RotateCcw aria-hidden />

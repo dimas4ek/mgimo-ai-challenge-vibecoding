@@ -54,8 +54,14 @@ describe("долги прошлых сессий", () => {
     expect(within(block).getByText(String(debt.totalPoints))).toBeTruthy();
     expect(within(block).getByText("Неудовлетворительно")).toBeTruthy();
     const link = within(block).getByRole("link", { name: /Подать на пересдачу/ });
-    expect(link.getAttribute("href")).toBe(retakeLink);
-    expect(retakeLink).toBe("/requests?new=1&type=retake_application");
+    expect(link.getAttribute("href")).toBe(retakeLink(debt.subject));
+    const href = new URL(retakeLink(debt.subject), "http://x");
+    expect(href.pathname).toBe("/requests");
+    expect(Object.fromEntries(href.searchParams)).toEqual({
+      new: "1",
+      type: "retake_application",
+      comment: debt.subject,
+    });
 
     // Блок стоит перед списком дисциплин текущего семестра.
     const list = screen.getByRole("region", { name: "Дисциплины" });
