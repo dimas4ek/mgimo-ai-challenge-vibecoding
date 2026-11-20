@@ -14,7 +14,7 @@ import type { BadgeTone } from "../../ui";
 export type WizardStep = "type" | "details" | "confirm";
 
 /** Лимит пояснения из контракта (`CreateRequestInputSchema`). */
-const COMMENT_MAX = 1000;
+export const COMMENT_MAX = 1000;
 
 const typeView: Record<RequestType, { label: string; hint: string }> = {
   enrollment_certificate: {
