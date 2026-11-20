@@ -1,6 +1,7 @@
 import type { Notification } from "@aihs/contract";
 import {
   AlarmClock,
+  CalendarClock,
   CalendarDays,
   CalendarOff,
   ChevronRight,
@@ -25,13 +26,22 @@ import { buttonVariants, ErrorState, ListSkeleton, PageHeader } from "../../ui";
 import { formatDateTime, requestTypeLabel } from "../requests/model";
 import { RequestStatusBadge } from "../requests/RequestStatusBadge";
 import { LessonCard } from "../schedule/LessonCard";
-import { addDays, formatDayTitle, isOngoing, moscowToday, nextLesson } from "../schedule/model";
 import {
+  addDays,
+  formatDayTitle,
+  isOngoing,
+  mondayOf,
+  moscowToday,
+  nextLesson,
+} from "../schedule/model";
+import {
+  changesWindowEnd,
   firstName,
   greeting,
   homeAnnouncements,
   homeDeadlines,
   recentRequestUpdates,
+  upcomingChanges,
 } from "./model";
 
 /** Блок главной: заголовок со ссылкой «Все» (переход в раздел в одно касание) и содержимое. */
@@ -105,6 +115,54 @@ function NextLessonBlock({ now }: { now: Date }) {
         />
       ) : (
         <NextWeekLesson now={now} />
+      )}
+    </Block>
+  );
+}
+
+/**
+ * «Изменения в расписании» (#39): переносы, замены и отмены на сегодня и 2 дня вперёд по Москве.
+ * Текущая неделя уже загружена «Следующей парой»; если окно заходит на следующую — догружаем её
+ * тем же `useSchedule(week)` (иначе ключ совпадает с текущей неделей и лишнего запроса нет).
+ * Изменений нет — блока нет.
+ */
+function ScheduleChangesBlock({ now }: { now: Date }) {
+  const today = moscowToday(now);
+  const end = changesWindowEnd(now);
+  const crossesWeek = mondayOf(end) !== mondayOf(today);
+  const current = useSchedule();
+  const next = useSchedule(crossesWeek ? end : undefined);
+  const pending = current.isPending || next.isPending;
+  const failed = current.isError ? current : next.isError ? next : null;
+  const changes =
+    current.data && next.data
+      ? upcomingChanges(
+          crossesWeek ? [...current.data.lessons, ...next.data.lessons] : current.data.lessons,
+          now,
+        )
+      : [];
+  if (!pending && !failed && changes.length === 0) return null;
+  const first = changes[0];
+  return (
+    <Block
+      id="home-changes"
+      title="Изменения в расписании"
+      icon={CalendarClock}
+      to={`${paths.schedule}?week=${mondayOf(first?.date ?? today)}`}
+      linkLabel="Всё расписание на эту неделю"
+    >
+      {pending ? (
+        <ListSkeleton rows={1} label="Загружаем изменения в расписании…" />
+      ) : failed ? (
+        <ErrorState description={retryHint(failed.error)} onRetry={() => failed.refetch()} />
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {changes.map((l) => (
+            <li key={l.id}>
+              <LessonCard lesson={l} ongoing={isOngoing(l, now)} showDate />
+            </li>
+          ))}
+        </ul>
       )}
     </Block>
   );
@@ -259,6 +317,7 @@ export function HomePage({ now = new Date() }: { now?: Date }) {
       <PageHeader title="Сегодня" description={`${hello} ${formatDayTitle(moscowToday(now))}.`} />
       <div className="grid gap-6 lg:grid-cols-2">
         <NextLessonBlock now={now} />
+        <ScheduleChangesBlock now={now} />
         <NotificationsBlock kind="deadlines" now={now} />
         <RequestsBlock now={now} />
         <NotificationsBlock kind="announcements" now={now} />

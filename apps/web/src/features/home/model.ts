@@ -1,7 +1,7 @@
 // Чистая логика главной «Сегодня» без React: что показать в каждом блоке и в каком порядке.
 // Время — по Москве (через модель расписания), а не по часам устройства.
-import type { Notification, NotificationType, RequestListItem } from "@aihs/contract";
-import { moscowTime } from "../schedule/model";
+import type { Lesson, Notification, NotificationType, RequestListItem } from "@aihs/contract";
+import { addDays, moscowTime, moscowToday } from "../schedule/model";
 
 /** Сколько карточек показываем в блоке главной; остальное — по ссылке «Все». */
 export const HOME_LIMIT = 3;
@@ -53,4 +53,29 @@ export function recentRequestUpdates(
     .filter((r) => r.status !== "submitted" && Date.parse(r.updatedAt) >= since)
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
     .slice(0, HOME_LIMIT);
+}
+
+/**
+ * Изменения в расписании на ближайшие `days` дней по Москве, начиная с сегодня (#39):
+ * пары с `change` (перенос, замена, отмена), которые ещё не закончились. По дате и времени.
+ * Пару, перенесённую на другой день, показываем в день, когда она теперь идёт.
+ */
+export function upcomingChanges(lessons: readonly Lesson[], now: Date, days = 3): Lesson[] {
+  const today = moscowToday(now);
+  const time = moscowTime(now);
+  const last = addDays(today, days - 1);
+  return lessons
+    .filter(
+      (l) =>
+        l.change !== null &&
+        l.date >= today &&
+        l.date <= last &&
+        !(l.date === today && l.end <= time),
+    )
+    .sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start));
+}
+
+/** Последний день окна `upcomingChanges`: по нему видно, нужна ли следующая неделя. */
+export function changesWindowEnd(now: Date, days = 3): string {
+  return addDays(moscowToday(now), days - 1);
 }
