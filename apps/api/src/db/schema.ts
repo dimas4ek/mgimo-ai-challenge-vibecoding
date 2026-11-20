@@ -205,6 +205,10 @@ export const grades = pgTable(
     /** 0–40; `null` — ещё не сдавал. */
     examPoints: integer("exam_points"),
     result: gradeResultEnum("result").notNull(),
+    /** Экзамен или зачёт: дата, время начала по Москве (`HH:MM`) и аудитория; `null` — не назначен. */
+    examDate: date("exam_date", { mode: "string" }),
+    examStart: text("exam_start"),
+    examRoom: text("exam_room"),
   },
   (t) => [
     uniqueIndex("grades_student_semester_subject_idx").on(t.studentId, t.semesterId, t.subjectId),
