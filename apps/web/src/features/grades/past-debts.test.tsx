@@ -1,0 +1,79 @@
+// @vitest-environment jsdom
+import { fixtures, type Grades, routes } from "@aihs/contract";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { cleanup, render, screen, within } from "@testing-library/react";
+import { HttpResponse, http } from "msw";
+import { setupServer } from "msw/node";
+import { MemoryRouter } from "react-router";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { createQueryClient } from "../../api/hooks";
+import { handlers, resetMockDb } from "../../mocks/handlers";
+import { GradesPage } from "./GradesPage";
+import { debtsNote } from "./model";
+import { retakeLink } from "./PastDebts";
+
+describe("пояснение к долгам в сводке", () => {
+  it("нет прошлых — без пояснения; все прошлые; часть прошлых", () => {
+    expect(debtsNote(1, 0)).toBeNull();
+    expect(debtsNote(0, 0)).toBeNull();
+    expect(debtsNote(1, 1)).toBe("с прошлых сессий");
+    expect(debtsNote(3, 1)).toBe("из них 1 с прошлых сессий");
+  });
+});
+
+const server = setupServer(...handlers);
+beforeAll(() => server.listen({ onUnhandledFrame: "error" }));
+afterEach(() => {
+  cleanup();
+  server.resetHandlers();
+});
+afterAll(() => server.close());
+beforeEach(() => resetMockDb({ as: "student" }));
+
+function open(grades?: Grades) {
+  if (grades) server.use(http.get(routes.me.grades.path, () => HttpResponse.json(grades)));
+  const client = createQueryClient();
+  client.setDefaultOptions({ queries: { retry: false } });
+  render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter>
+        <GradesPage now={new Date("2026-11-19T09:00:00Z")} />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+
+describe("долги прошлых сессий", () => {
+  it("блок над дисциплинами: семестр, предмет, баллы, итог и ссылка на пересдачу", async () => {
+    const debt = fixtures.grades.pastDebts[0];
+    if (!debt) throw new Error("нет прошлого долга в фикстуре");
+    open();
+    const block = await screen.findByRole("region", { name: "Долги прошлых сессий" });
+    expect(within(block).getByText(debt.semester)).toBeTruthy();
+    expect(within(block).getByRole("heading", { name: debt.subject })).toBeTruthy();
+    expect(within(block).getByText(String(debt.totalPoints))).toBeTruthy();
+    expect(within(block).getByText("Неудовлетворительно")).toBeTruthy();
+    const link = within(block).getByRole("link", { name: /Подать на пересдачу/ });
+    expect(link.getAttribute("href")).toBe(retakeLink);
+    expect(retakeLink).toBe("/requests?new=1&type=retake_application");
+
+    // Блок стоит перед списком дисциплин текущего семестра.
+    const list = screen.getByRole("region", { name: "Дисциплины" });
+    expect(block.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    // Сводка объясняет, что долг прошлый; калькулятор на месте.
+    expect(screen.getByText("с прошлых сессий")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Что нужно набрать" })).toBeTruthy();
+  });
+
+  it("долгов нет — блока и пояснения нет", async () => {
+    open({
+      ...fixtures.grades,
+      pastDebts: [],
+      summary: { ...fixtures.grades.summary, debts: 0 },
+    });
+    expect(await screen.findByRole("heading", { name: "Как у меня дела" })).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "Долги прошлых сессий" })).toBeNull();
+    expect(screen.queryByText(/прошлых сессий/)).toBeNull();
+  });
+});
