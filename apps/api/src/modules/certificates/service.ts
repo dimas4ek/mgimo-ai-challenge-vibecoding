@@ -19,6 +19,7 @@ import {
   subjects,
 } from "../../db/schema";
 import { moscowDate } from "../../lib/moscow-time";
+import { semesterOrder } from "../../lib/semester-order";
 
 /** «Лебедянская Мирослава Игоревна» → «Л. М. И.». */
 export function initialsOf(lastName: string, firstName: string, middleName: string | null): string {
@@ -56,15 +57,6 @@ export async function snapshotGrades(db: Db, studentId: string): Promise<Certifi
       totalPoints: semesterPoints + (examPoints ?? 0),
     }))
     .sort((a, b) => semesterOrder(a.semester) - semesterOrder(b.semester));
-}
-
-/**
- * Порядковый номер семестра по названию «Осенний семестр 2026/27»: учебный год, внутри него
- * осенний раньше весеннего. Отдельной даты начала у семестра в БД нет.
- */
-function semesterOrder(name: string): number {
-  const year = Number(/(\d{4})\/\d{2}/.exec(name)?.[1] ?? 0);
-  return year * 2 + (name.startsWith("Весенний") ? 1 : 0);
 }
 
 /**

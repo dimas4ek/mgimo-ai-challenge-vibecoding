@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../../app";
 import { createDb, type DbHandle } from "../../db/client";
 import { seed, seedAccounts } from "../../db/seed";
-import { addDays, mondayOf } from "../../lib/moscow-time";
+import { addDays, mondayOf, moscowDate } from "../../lib/moscow-time";
 import { summarize } from "./service";
 
 const NOW = new Date("2026-11-19T09:00:00Z");
@@ -96,7 +96,7 @@ describe("GET /api/me/grades", () => {
     for (const d of g.disciplines) {
       expect(d.totalPoints).toBe(d.semesterPoints + (d.examPoints ?? 0));
     }
-    expect(g.summary).toEqual(summarize(g.disciplines));
+    expect(g.summary).toEqual(summarize(g.disciplines, g.pastDebts));
   });
 
   it("только свои: у двух студентов разные записи", async () => {
@@ -106,11 +106,10 @@ describe("GET /api/me/grades", () => {
     expect(theirs.some((id) => mine.has(id))).toBe(false);
   });
 
-  it("даты экзаменов: экзамен внутри сессии, зачёт за неделю до неё, без воскресений", async () => {
+  it("даты экзаменов: экзамен внутри сессии, зачёт до неё, без воскресений", async () => {
     for (const who of ["student", "student2"] as const) {
       const g = await grades(who);
       const { startDate, endDate } = g.session ?? { startDate: "", endDate: "" };
-      const weekBefore = addDays(startDate, -7);
       const scheduled = g.disciplines.filter((d) => d.exam !== null);
       expect(scheduled.length).toBeGreaterThan(0);
       for (const d of scheduled) {
@@ -118,7 +117,7 @@ describe("GET /api/me/grades", () => {
         if (d.controlForm === "exam") {
           expect(date >= startDate && date <= endDate, `${d.subject}: ${date}`).toBe(true);
         } else {
-          expect(date >= weekBefore && date < startDate, `${d.subject}: ${date}`).toBe(true);
+          expect(date < startDate, `${d.subject}: ${date}`).toBe(true);
         }
         expect(addDays(mondayOf(date), 6)).not.toBe(date);
         expect(d.exam?.start).toMatch(/^\d{2}:\d{2}$/);
@@ -135,6 +134,53 @@ describe("GET /api/me/grades", () => {
       );
     const mine = new Set(await slots("student"));
     expect((await slots("student2")).some((s) => mine.has(s))).toBe(false);
+  });
+
+  it("в текущем семестре нет баллов за экзамен или зачёт, дата которого ещё не наступила", async () => {
+    const today = moscowDate(NOW);
+    for (const who of ["student", "student2"] as const) {
+      for (const d of (await grades(who)).disciplines) {
+        if (d.examPoints === null) continue;
+        expect(d.exam, d.subject).not.toBeNull();
+        expect(d.exam?.date ?? "", d.subject).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+        expect((d.exam?.date ?? "") <= today, `${d.subject}: ${d.exam?.date}`).toBe(true);
+      }
+    }
+  });
+
+  it("долг прошлой сессии: у student один, в сводке учтён, в текущем семестре долгов нет", async () => {
+    const g = await grades("student");
+    expect(g.pastDebts).toHaveLength(1);
+    expect(g.pastDebts[0]).toMatchObject({
+      semester: "Весенний семестр 2025/26",
+      subject: "Теория вероятностей и статистика, ч. 1",
+      result: "unsatisfactory",
+    });
+    expect(g.pastDebts[0]?.totalPoints).toBe(
+      (g.pastDebts[0]?.semesterPoints ?? 0) + (g.pastDebts[0]?.examPoints ?? 0),
+    );
+    // Сданная дисциплина прошлого семестра в долги не попадает.
+    expect(g.pastDebts.map((d) => d.subject)).not.toContain("Философия науки");
+    expect(g.summary.debts).toBe(1);
+    expect(g.summary).toEqual(summarize(g.disciplines, g.pastDebts));
+    const part2 = g.disciplines.find((d) => d.subject === "Теория вероятностей и статистика, ч. 2");
+    expect(part2).toMatchObject({ examPoints: null, result: "pending" });
+  });
+
+  it("у student2 прошлых долгов нет, а данные свои", async () => {
+    const g = await grades("student2");
+    expect(g.pastDebts).toEqual([]);
+    expect(g.summary.debts).toBe(0);
+  });
+
+  it("сброс демо-данных не меняет успеваемость", async () => {
+    const before = await grades("student");
+    const res = await app.request(routes.me.demoReset.path, {
+      method: "POST",
+      headers: { cookie: cookies.student },
+    });
+    expect(res.status).toBe(200);
+    expect(await grades("student")).toEqual(before);
   });
 
   it("без сессии → 401, сотруднику → 403", async () => {

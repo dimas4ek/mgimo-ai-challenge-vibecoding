@@ -149,7 +149,10 @@ describe("seed", () => {
   });
 
   it("заполняет оценки, текущий семестр и сессию, данные у студентов разные", async () => {
-    const [semester] = await db.select().from(schema.semesters);
+    const [semester] = await db
+      .select()
+      .from(schema.semesters)
+      .where(eq(schema.semesters.isCurrent, true));
     expect(semester).toMatchObject({
       name: "Осенний семестр 2026/27",
       sessionStart: "2026-12-28",
@@ -169,16 +172,17 @@ describe("seed", () => {
     expect(results).toContain("pending");
   });
 
-  it("весной даты экзаменов попадают в весеннюю сессию, зачёты — до неё", () => {
+  it("весной даты экзаменов попадают в весеннюю сессию, зачёты — до неё, прошлый семестр — весна 2025/26", () => {
     const data = buildSeedData(new Date("2027-04-15T09:00:00Z"), seedAccounts);
-    const [semester] = data.semesters;
+    const semester = data.semesters.find((s) => s.isCurrent);
     expect(semester).toMatchObject({ sessionStart: "2027-06-08", sessionEnd: "2027-06-30" });
-    const dated = data.grades.filter((g) => g.examDate);
+    expect(data.semesters.find((s) => !s.isCurrent)?.name).toBe("Весенний семестр 2025/26");
+    const dated = data.grades.filter((g) => g.examDate && g.semesterId === semester?.id);
     expect(dated.length).toBeGreaterThan(0);
     for (const g of dated) {
       const date = g.examDate ?? "";
       if (g.controlForm === "exam") expect(date >= "2027-06-08" && date <= "2027-06-30").toBe(true);
-      else expect(date >= "2027-06-01" && date < "2027-06-08").toBe(true);
+      else expect(date < "2027-06-08").toBe(true);
     }
   });
 
@@ -218,7 +222,10 @@ describe("seed от другой даты", () => {
       .from(schema.lessons)
       .where(and(gte(schema.lessons.date, "2027-03-08"), lte(schema.lessons.date, "2027-03-14")));
     expect(week.length).toBeGreaterThan(10);
-    const [semester] = await handle.db.select().from(schema.semesters);
+    const [semester] = await handle.db
+      .select()
+      .from(schema.semesters)
+      .where(eq(schema.semesters.isCurrent, true));
     expect(semester?.name).toBe("Весенний семестр 2026/27");
     await handle.close();
   });

@@ -200,7 +200,10 @@ describe("выписка с оценками", () => {
       totalPoints: mlNow.totalPoints,
       result: mlNow.result,
     });
-    expect(cert.grades).toHaveLength(current.disciplines.length);
+    // Текущий семестр целиком плюс прошлые семестры.
+    const thisSemester = cert.grades?.filter((g) => g.semester === current.semester) ?? [];
+    expect(thisSemester).toHaveLength(current.disciplines.length);
+    expect(cert.grades?.[0]?.semester).toBe("Весенний семестр 2025/26");
 
     await setSemesterPoints("student", "Машинное обучение", 59);
     const again = await certificateOf("student", id);
