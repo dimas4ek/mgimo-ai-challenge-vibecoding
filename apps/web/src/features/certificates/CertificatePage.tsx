@@ -6,6 +6,7 @@ import { paths } from "../../app/paths";
 import { cn } from "../../lib/cn";
 import { Button, buttonVariants, EmptyState, ErrorState, Skeleton } from "../../ui";
 import { requestTypeLabel } from "../requests/model";
+import { GradesTable } from "./GradesTable";
 import { certificateStatement, formatIssuedAt, verifyUrl } from "./model";
 import { QrCode } from "./QrCode";
 
@@ -118,6 +119,10 @@ export function CertificatePage() {
             />
             {query.data.purpose && <Field label="Для предоставления" value={query.data.purpose} />}
           </dl>
+
+          {query.data.grades && query.data.grades.length > 0 && (
+            <GradesTable grades={query.data.grades} />
+          )}
 
           <footer className="mt-8 flex flex-col items-center gap-4 border-t border-border pt-6 sm:flex-row sm:items-end">
             <QrCode
