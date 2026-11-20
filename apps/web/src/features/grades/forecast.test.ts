@@ -31,14 +31,15 @@ describe("forecast", () => {
     }
   });
 
-  it("фикстура контракта: экзамен впереди, «хорошо», «зачтено» и долг", () => {
+  it("фикстура контракта: экзамены впереди, «хорошо», «зачтено»", () => {
     const g = byGoal(forecast(fixtures.grades.disciplines));
-    // Машинное обучение 52/60, экзамен; ОЕЯ — «хорошо» 71; Этика — зачтено; ТВиС — неуд 22/60.
+    // Машинное обучение 52/60, экзамен; ОЕЯ — «хорошо» 71; Этика — зачтено; ТВиС, ч. 2 — 22/60, экзамен.
+    // Долг по ТВиС, ч. 1 — прошлый (pastDebts), калькулятор текущего семестра его не считает.
     expect(needs(g.close)).toEqual([
       { kind: "need", examPoints: 3 },
       { kind: "done" },
       { kind: "done" },
-      { kind: "retake", examPoints: 33 },
+      { kind: "need", examPoints: 33 },
     ]);
     expect(g.close).toMatchObject({ reachable: true, remaining: 2 });
     expect(needs(g.scholarship)?.[0]).toEqual({ kind: "need", examPoints: 18 });

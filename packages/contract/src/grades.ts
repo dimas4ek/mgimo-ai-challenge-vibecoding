@@ -53,6 +53,13 @@ export const DisciplineGradeSchema = z.object({
 });
 export type DisciplineGrade = z.infer<typeof DisciplineGradeSchema>;
 
+/** Несданная дисциплина прошлого семестра: строка успеваемости и семестр, в котором остался долг. */
+export const PastDebtSchema = DisciplineGradeSchema.extend({
+  /** «Весенний семестр 2025/26». */
+  semester: z.string().min(1),
+});
+export type PastDebt = z.infer<typeof PastDebtSchema>;
+
 /** Экзаменационная сессия текущего семестра. */
 export const ExamSessionSchema = z.object({
   startDate: IsoDateSchema,
@@ -67,7 +74,10 @@ export const GradesSummarySchema = z.object({
   disciplinesTotal: z.number().int().min(0),
   /** Закрыто: итог есть и он положительный. */
   disciplinesPassed: z.number().int().min(0),
-  /** Долги: `unsatisfactory` или `failed`. */
+  /**
+   * Долги: `unsatisfactory` или `failed` в текущем семестре **и** несданные дисциплины прошлых
+   * семестров (`pastDebts`). Средний балл и «закрыто» считаются только по текущему семестру.
+   */
   debts: z.number().int().min(0),
 });
 export type GradesSummary = z.infer<typeof GradesSummarySchema>;
@@ -78,6 +88,8 @@ export const GradesSchema = z.object({
   semester: z.string().min(1),
   session: ExamSessionSchema.nullable(),
   disciplines: z.array(DisciplineGradeSchema),
+  /** Несданные дисциплины прошлых семестров, от старых к новым; пусто, если долгов нет. */
+  pastDebts: z.array(PastDebtSchema),
   summary: GradesSummarySchema,
 });
 export type Grades = z.infer<typeof GradesSchema>;

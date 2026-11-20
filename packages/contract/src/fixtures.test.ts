@@ -68,12 +68,14 @@ describe("фикстуры согласованы между собой", () => 
   });
 
   it("сводка успеваемости совпадает с дисциплинами", () => {
-    const { disciplines, summary } = fixtures.grades;
+    const { disciplines, pastDebts, summary } = fixtures.grades;
     const avg = disciplines.reduce((s, d) => s + d.totalPoints, 0) / disciplines.length;
     expect(summary.averagePoints).toBeCloseTo(avg, 2);
     expect(summary.disciplinesTotal).toBe(disciplines.length);
     const debts = disciplines.filter((d) => d.result === "unsatisfactory" || d.result === "failed");
-    expect(summary.debts).toBe(debts.length);
+    // Долги — текущего семестра и прошлых.
+    expect(summary.debts).toBe(debts.length + pastDebts.length);
+    for (const d of pastDebts) expect(["unsatisfactory", "failed"]).toContain(d.result);
     const passed = disciplines.filter((d) =>
       ["excellent", "good", "satisfactory", "passed"].includes(d.result),
     );

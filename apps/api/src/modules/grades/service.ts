@@ -1,4 +1,4 @@
-import type { DisciplineGrade, Grades, GradesSummary } from "@aihs/contract";
+import type { DisciplineGrade, Grades, GradesSummary, PastDebt } from "@aihs/contract";
 import { and, asc, eq } from "drizzle-orm";
 import type { Db } from "../../db/client";
 import * as schema from "../../db/schema";
@@ -12,18 +12,21 @@ const POSITIVE = new Set<DisciplineGrade["result"]>([
 const DEBT = new Set<DisciplineGrade["result"]>(["unsatisfactory", "failed"]);
 
 /**
- * Сводка «как у меня дела» по дисциплинам: средний итоговый балл (округление до сотых,
- * 0 если дисциплин нет), всего, закрыто (итог есть и положительный), долги
- * (`unsatisfactory` или `failed`). Чистая функция.
+ * Сводка «как у меня дела»: средний итоговый балл по текущему семестру (округление до сотых,
+ * 0 если дисциплин нет), всего, закрыто (итог есть и положительный), долги — `unsatisfactory`
+ * или `failed` в текущем семестре плюс долги прошлых семестров. Чистая функция.
  */
-export function summarize(disciplines: DisciplineGrade[]): GradesSummary {
+export function summarize(
+  disciplines: DisciplineGrade[],
+  pastDebts: PastDebt[] = [],
+): GradesSummary {
   const total = disciplines.reduce((sum, d) => sum + d.totalPoints, 0);
   const average = disciplines.length ? total / disciplines.length : 0;
   return {
     averagePoints: Math.round(average * 100) / 100,
     disciplinesTotal: disciplines.length,
     disciplinesPassed: disciplines.filter((d) => POSITIVE.has(d.result)).length,
-    debts: disciplines.filter((d) => DEBT.has(d.result)).length,
+    debts: disciplines.filter((d) => DEBT.has(d.result)).length + pastDebts.length,
   };
 }
 
@@ -78,6 +81,7 @@ export async function getGrades(db: Db, studentId: string): Promise<Grades | nul
         ? { startDate: semester.sessionStart, endDate: semester.sessionEnd }
         : null,
     disciplines,
+    pastDebts: [],
     summary: summarize(disciplines),
   };
 }

@@ -139,7 +139,8 @@ const grades: Grades = {
       examPoints: 30,
       totalPoints: 71,
       result: "good",
-      exam: { date: "2026-12-24", start: "12:00", room: "Б-108" },
+      // Сдан досрочно: дата уже прошла.
+      exam: { date: "2026-11-14", start: "12:00", room: "Б-108" },
     },
     {
       id: "2d3e4f5a-6b7c-4d8e-9f0a-1b2c3d4e5f03",
@@ -151,22 +152,38 @@ const grades: Grades = {
       examPoints: 35,
       totalPoints: 93,
       result: "passed",
-      exam: { date: "2026-12-22", start: "14:00", room: "Б-305" },
+      exam: { date: "2026-11-17", start: "14:00", room: "Б-305" },
     },
     {
       id: "2d3e4f5a-6b7c-4d8e-9f0a-1b2c3d4e5f04",
-      subject: "Теория вероятностей и статистика",
+      subject: "Теория вероятностей и статистика, ч. 2",
       teacher: "Зарецкий Глеб Аркадьевич",
       controlForm: "exam",
       credits: 4,
       semesterPoints: 22,
-      examPoints: 15,
-      totalPoints: 37,
-      result: "unsatisfactory",
+      examPoints: null,
+      totalPoints: 22,
+      result: "pending",
       exam: { date: "2027-01-19", start: "09:00", room: "А-301" },
     },
   ],
-  summary: { averagePoints: 63.25, disciplinesTotal: 4, disciplinesPassed: 2, debts: 1 },
+  pastDebts: [
+    {
+      id: "2d3e4f5a-6b7c-4d8e-9f0a-1b2c3d4e5f05",
+      semester: "Весенний семестр 2025/26",
+      subject: "Теория вероятностей и статистика, ч. 1",
+      teacher: "Зарецкий Глеб Аркадьевич",
+      controlForm: "exam",
+      credits: 4,
+      semesterPoints: 25,
+      examPoints: 12,
+      totalPoints: 37,
+      result: "unsatisfactory",
+      exam: { date: "2026-06-15", start: "10:00", room: "А-301" },
+    },
+  ],
+  // Долг — прошлый (pastDebts); средний и «закрыто» — только по текущему семестру.
+  summary: { averagePoints: 59.5, disciplinesTotal: 4, disciplinesPassed: 2, debts: 1 },
 };
 
 const request1: Request = {
