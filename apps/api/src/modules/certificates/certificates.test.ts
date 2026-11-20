@@ -190,30 +190,48 @@ describe("выписка с оценками", () => {
     const cert = await certificateOf("student", id);
     expect(cert.type).toBe("transcript");
     expect(cert.grades).not.toBeNull();
-    const ml = cert.grades?.find((g) => g.subject === "Машинное обучение");
-    const mlNow = current.disciplines.find((d) => d.subject === "Машинное обучение");
-    if (!mlNow) throw new Error("в сиде нет «Машинного обучения»");
-    expect(ml).toMatchObject({
+    const finalNow = current.disciplines.filter((d) => d.result !== "pending");
+    const closed = finalNow[0];
+    if (!closed) throw new Error("в сиде нет закрытых дисциплин текущего семестра");
+    expect(cert.grades?.find((g) => g.subject === closed.subject)).toMatchObject({
       semester: current.semester,
-      controlForm: mlNow.controlForm,
-      credits: mlNow.credits,
-      totalPoints: mlNow.totalPoints,
-      result: mlNow.result,
+      controlForm: closed.controlForm,
+      credits: closed.credits,
+      totalPoints: closed.totalPoints,
+      result: closed.result,
     });
-    // Текущий семестр целиком плюс прошлые семестры.
+    // Из текущего семестра — только дисциплины с итогом, плюс прошлые семестры.
     const thisSemester = cert.grades?.filter((g) => g.semester === current.semester) ?? [];
-    expect(thisSemester).toHaveLength(current.disciplines.length);
+    expect(thisSemester.map((g) => g.subject).sort()).toEqual(
+      finalNow.map((d) => d.subject).sort(),
+    );
     expect(cert.grades?.[0]?.semester).toBe("Весенний семестр 2025/26");
 
-    await setSemesterPoints("student", "Машинное обучение", 59);
+    const points = closed.semesterPoints === 59 ? 58 : 59;
+    await setSemesterPoints("student", closed.subject, points);
     const again = await certificateOf("student", id);
     expect(again.grades).toEqual(cert.grades);
     const fresh = GradesSchema.parse(
       await (await app.request(routes.me.grades.path, as("student"))).json(),
     );
-    const mlFresh = fresh.disciplines.find((d) => d.subject === "Машинное обучение");
-    expect(mlFresh?.totalPoints).toBe(59 + (mlNow.examPoints ?? 0));
-    expect(mlFresh?.totalPoints).not.toBe(ml?.totalPoints);
+    const closedFresh = fresh.disciplines.find((d) => d.subject === closed.subject);
+    expect(closedFresh?.totalPoints).toBe(points + (closed.examPoints ?? 0));
+    expect(closedFresh?.totalPoints).not.toBe(closed.totalPoints);
+  });
+
+  it("в выписке нет незакрытых дисциплин: промежуточные баллы без итога не попадают", async () => {
+    const id = await issueTranscript("student");
+    const cert = await certificateOf("student", id);
+    const current = GradesSchema.parse(
+      await (await app.request(routes.me.grades.path, as("student"))).json(),
+    );
+    const pending = current.disciplines.filter((d) => d.result === "pending");
+    expect(pending.length).toBeGreaterThan(0);
+    const subjectNames = cert.grades?.map((g) => g.subject) ?? [];
+    for (const d of pending) expect(subjectNames).not.toContain(d.subject);
+    expect(cert.grades?.every((g) => g.result !== "pending")).toBe(true);
+    // Долг прошлой сессии — итог («неуд»), он в выписке остаётся.
+    for (const debt of current.pastDebts) expect(subjectNames).toContain(debt.subject);
   });
 
   it("у справки другого типа grades: null", async () => {
@@ -224,8 +242,13 @@ describe("выписка с оценками", () => {
   it("у каждого студента в выписке свои оценки, чужая выписка → 404", async () => {
     const id = await issueTranscript("student2");
     const cert = await certificateOf("student2", id);
+    const own = GradesSchema.parse(
+      await (await app.request(routes.me.grades.path, as("student2"))).json(),
+    );
     const subjectNames = cert.grades?.map((g) => g.subject) ?? [];
-    expect(subjectNames).toContain("Линейная алгебра");
+    const ownFinal = own.disciplines.filter((d) => d.result !== "pending").map((d) => d.subject);
+    expect(ownFinal.length).toBeGreaterThan(0);
+    for (const s of ownFinal) expect(subjectNames).toContain(s);
     expect(subjectNames).not.toContain("Машинное обучение");
     expect((await getCertificate("student", id)).status).toBe(404);
   });

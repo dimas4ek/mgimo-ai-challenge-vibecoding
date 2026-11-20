@@ -120,9 +120,7 @@ export function CertificatePage() {
             {query.data.purpose && <Field label="Для предоставления" value={query.data.purpose} />}
           </dl>
 
-          {query.data.grades && query.data.grades.length > 0 && (
-            <GradesTable grades={query.data.grades} />
-          )}
+          {query.data.grades && <GradesTable grades={query.data.grades} />}
 
           <footer className="mt-8 flex flex-col items-center gap-4 border-t border-border pt-6 sm:flex-row sm:items-end">
             <QrCode

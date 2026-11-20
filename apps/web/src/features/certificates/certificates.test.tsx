@@ -135,6 +135,20 @@ describe("справка для печати", () => {
     expect(screen.queryByRole("region", { name: "Оценки на дату выдачи" })).toBeNull();
   });
 
+  it("выписка без итоговых оценок: раздел есть и честно говорит, что оценок нет", async () => {
+    const transcript = fixtures.certificateByRequestId[fixtures.ids.request4];
+    if (!transcript) throw new Error("нет фикстуры выписки");
+    server.use(
+      http.get(routes.me.certificates.get.path, () =>
+        HttpResponse.json({ ...transcript, grades: [] }),
+      ),
+    );
+    open(paths.certificate(transcript.requestId));
+    const section = await screen.findByRole("region", { name: "Оценки на дату выдачи" });
+    expect(within(section).getByText("Итоговых оценок на дату выдачи ещё не было.")).toBeTruthy();
+    expect(within(section).queryAllByRole("row")).toHaveLength(0);
+  });
+
   it("группировка по семестрам сохраняет порядок", () => {
     const g = (semester: string, subject: string) => ({
       semester,
