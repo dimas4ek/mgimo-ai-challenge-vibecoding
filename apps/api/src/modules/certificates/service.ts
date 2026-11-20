@@ -6,9 +6,18 @@ import {
   REQUEST_CATEGORY,
   type RequestType,
 } from "@aihs/contract";
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import type { Db } from "../../db/client";
-import { certificates, faculties, groups, requests, students } from "../../db/schema";
+import {
+  certificates,
+  faculties,
+  grades,
+  groups,
+  requests,
+  semesters,
+  students,
+  subjects,
+} from "../../db/schema";
 import { moscowDate } from "../../lib/moscow-time";
 
 /** «Лебедянская Мирослава Игоревна» → «Л. М. И.». */
@@ -25,14 +34,74 @@ const isCertificateType = (type: RequestType) => REQUEST_CATEGORY[type] === "cer
  * Снимок оценок студента для выписки: все семестры из БД, по порядку семестров и дисциплин.
  * Вызывается, когда выписка выдаётся (заявка становится `ready`), и сохраняется вместе со справкой.
  */
-export async function snapshotGrades(_db: Db, _studentId: string): Promise<CertificateGrade[]> {
-  throw new Error("not implemented");
+export async function snapshotGrades(db: Db, studentId: string): Promise<CertificateGrade[]> {
+  const rows = await db
+    .select({
+      semester: semesters.name,
+      subject: subjects.name,
+      controlForm: grades.controlForm,
+      credits: grades.credits,
+      semesterPoints: grades.semesterPoints,
+      examPoints: grades.examPoints,
+      result: grades.result,
+    })
+    .from(grades)
+    .innerJoin(semesters, eq(semesters.id, grades.semesterId))
+    .innerJoin(subjects, eq(subjects.id, grades.subjectId))
+    .where(eq(grades.studentId, studentId))
+    .orderBy(asc(subjects.name), asc(grades.id));
+  return rows
+    .map(({ semesterPoints, examPoints, ...r }) => ({
+      ...r,
+      totalPoints: semesterPoints + (examPoints ?? 0),
+    }))
+    .sort((a, b) => semesterOrder(a.semester) - semesterOrder(b.semester));
+}
+
+/**
+ * Порядковый номер семестра по названию «Осенний семестр 2026/27»: учебный год, внутри него
+ * осенний раньше весеннего. Отдельной даты начала у семестра в БД нет.
+ */
+function semesterOrder(name: string): number {
+  const year = Number(/(\d{4})\/\d{2}/.exec(name)?.[1] ?? 0);
+  return year * 2 + (name.startsWith("Весенний") ? 1 : 0);
+}
+
+/**
+ * Выдаёт справку по готовой заявке: случайный токен (32 байта, base64url), номер и, для выписки,
+ * снимок оценок. Справка уже есть → ничего не делает, поэтому токен, номер и оценки не меняются.
+ * Вызывается при переходе заявки в `ready` и, для заявок, готовых ещё в сиде, при первом открытии.
+ */
+export async function issueCertificate(
+  db: Db,
+  request: { id: string; studentId: string; type: RequestType },
+  issuedAt: Date,
+  now: Date,
+): Promise<void> {
+  if (!isCertificateType(request.type)) return;
+  const [existing] = await db
+    .select({ requestId: certificates.requestId })
+    .from(certificates)
+    .where(eq(certificates.requestId, request.id));
+  if (existing) return;
+  // Два одновременных первых открытия не создадут двух справок: вторая вставка просто ничего не сделает.
+  await db
+    .insert(certificates)
+    .values({
+      requestId: request.id,
+      token: randomBytes(32).toString("base64url"),
+      number: `AIHS-${moscowDate(issuedAt).slice(0, 4)}-${randomBytes(4).toString("hex").toUpperCase()}`,
+      grades: request.type === "transcript" ? await snapshotGrades(db, request.studentId) : null,
+      createdAt: now,
+    })
+    .onConflictDoNothing({ target: certificates.requestId });
 }
 
 /**
  * Справка для печати по заявке студента. Выдаётся только для заявки-справки в статусе `ready`
  * своего студента; иначе `null` (роут отвечает 404 — не раскрываем, что заявка существует).
- * При первом вызове справке выдаётся случайный токен (32 байта, base64url) и номер; дальше они не меняются.
+ * Справка выдаётся при переходе заявки в `ready` (`issueCertificate`); у заявок, готовых ещё в сиде, —
+ * при первом открытии. Токен, номер и оценки выписки дальше не меняются.
  */
 export async function getCertificate(
   db: Db,
@@ -63,18 +132,9 @@ export async function getCertificate(
     .where(and(eq(requests.id, requestId), eq(requests.studentId, studentId)));
   if (row?.status !== "ready" || !isCertificateType(row.type)) return null;
 
-  // Два одновременных первых открытия не создадут двух справок: вторая вставка просто ничего не сделает.
-  await db
-    .insert(certificates)
-    .values({
-      requestId,
-      token: randomBytes(32).toString("base64url"),
-      number: `AIHS-${moscowDate(row.issuedAt).slice(0, 4)}-${randomBytes(4).toString("hex").toUpperCase()}`,
-      createdAt: now,
-    })
-    .onConflictDoNothing({ target: certificates.requestId });
+  await issueCertificate(db, { id: requestId, studentId, type: row.type }, row.issuedAt, now);
   const [issued] = await db
-    .select({ token: certificates.token, number: certificates.number })
+    .select({ token: certificates.token, number: certificates.number, grades: certificates.grades })
     .from(certificates)
     .where(eq(certificates.requestId, requestId));
   if (!issued) throw new Error(`справка для заявки ${requestId} не сохранилась`);
@@ -95,7 +155,7 @@ export async function getCertificate(
       group: row.group,
     },
     purpose: row.comment,
-    grades: null,
+    grades: issued.grades ?? (row.type === "transcript" ? [] : null),
   };
 }
 

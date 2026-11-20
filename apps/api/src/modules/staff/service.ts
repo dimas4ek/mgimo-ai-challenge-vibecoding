@@ -1,5 +1,6 @@
 import type { ChangeStatusInput, RequestType } from "@aihs/contract";
 import type { Db } from "../../db/client";
+import { issueCertificate } from "../certificates/service";
 import { type NotifyPayload, notify } from "../notifications/service";
 import { type ChangeStatusResult, changeRequestStatus } from "../requests/service";
 
@@ -39,8 +40,8 @@ export function statusNotification(
 }
 
 /**
- * Смена статуса заявки сотрудником (#10): `changeRequestStatus` (статус + история), затем
- * уведомление студенту. Роут вызывает только эту функцию, поэтому уведомление не забыть.
+ * Смена статуса заявки сотрудником (#10): `changeRequestStatus` (статус + история), для готовой
+ * справки — выдача справки со снимком оценок (`issueCertificate`), затем уведомление студенту. Роут вызывает только эту функцию, поэтому уведомление не забыть.
  */
 export async function changeStatusAndNotify(
   db: Db,
@@ -50,6 +51,9 @@ export async function changeStatusAndNotify(
 ): Promise<ChangeStatusResult> {
   const result = await changeRequestStatus(db, id, input, now);
   if (!result.ok) return result;
+  if (input.status === "ready") {
+    await issueCertificate(db, { ...result.item, studentId: result.studentId }, now, now);
+  }
   const comment = input.comment?.trim() ? input.comment.trim() : null;
   await notify(db, result.studentId, statusNotification(result.item, input.status, comment), now);
   return result;
