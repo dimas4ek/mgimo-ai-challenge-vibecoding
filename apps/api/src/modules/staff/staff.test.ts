@@ -202,7 +202,7 @@ describe("POST /api/staff/requests/:id/status", () => {
     expect((await changeStatus("staff", created.id, { status: "ready" })).status).toBe(200);
     const notifications = (await feed("student")).items.length;
 
-    const res = await changeStatus("staff", created.id, { status: "rejected" });
+    const res = await changeStatus("staff", created.id, { status: "rejected", comment: "Ошибка" });
     expect(res.status).toBe(409);
     expect(await errorCode(res)).toBe("request_closed");
 
@@ -221,6 +221,8 @@ describe("POST /api/staff/requests/:id/status", () => {
     ["вернуть в submitted", { status: "submitted" }],
     ["неизвестный статус", { status: "lost" }],
     ["слишком длинный комментарий", { status: "rejected", comment: "x".repeat(1001) }],
+    ["отказ без причины", { status: "rejected" }],
+    ["отказ с пустой причиной", { status: "rejected", comment: "   " }],
   ])("невалидный ввод (%s) → 400", async (_name, body) => {
     const created = await createAs("student", "transcript");
     const res = await changeStatus("staff", created.id, body);
