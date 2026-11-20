@@ -17,10 +17,13 @@ import {
 const toMe = (u: SessionUser): Me => ({ id: u.id, role: u.role, displayName: u.displayName });
 
 /**
- * Адрес клиента для rate-limit. За Caddy это последний адрес в `X-Forwarded-For`:
- * его дописывает сам прокси, а не клиент.
+ * Адрес клиента для rate-limit. Если задан `ipHeader` (за Cloudflare — `cf-connecting-ip`,
+ * его перезаписывает сам Cloudflare), адрес берётся из него, `X-Forwarded-For` не смотрим:
+ * на Render последний адрес там — прокси платформы, общий для всех посетителей.
+ * Иначе (за Caddy) это последний адрес в `X-Forwarded-For`: его дописывает сам прокси, а не клиент.
  */
-function clientKey(c: Context): string {
+function clientKey(c: Context, ipHeader: string | undefined): string {
+  if (ipHeader) return c.req.header(ipHeader)?.trim() || "unknown";
   const forwarded = c.req.header("x-forwarded-for")?.split(",").at(-1)?.trim();
   return forwarded || c.req.header("x-real-ip") || "local";
 }
@@ -35,11 +38,12 @@ export function authRoutes(deps: AppDeps) {
   const secure = deps.secureCookies ?? process.env.NODE_ENV === "production";
   const limit = deps.loginRateLimit ?? { max: 10, windowMs: 15 * 60 * 1000 };
   const limiter = new LoginRateLimiter(limit.max, limit.windowMs);
+  const ipHeader = (deps.clientIpHeader ?? process.env.CLIENT_IP_HEADER)?.trim() || undefined;
 
   return new Hono<AppEnv>()
     .post(routes.auth.login.path, validate("json", LoginInputSchema), async (c) => {
       const now = c.var.now();
-      const key = clientKey(c);
+      const key = clientKey(c, ipHeader);
       if (limiter.isBlocked(key, now)) {
         return apiError(c, 429, "rate_limited", "Слишком много попыток. Попробуйте через 15 минут");
       }
