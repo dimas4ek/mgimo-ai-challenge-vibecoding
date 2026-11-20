@@ -65,7 +65,9 @@ function Summary({ grades, now }: { grades: Grades; now: Date }) {
         <span className="text-4xl font-bold tracking-tight tabular-nums">
           {averagePoints.toLocaleString("ru-RU", { maximumFractionDigits: 1 })}
         </span>
-        <span className="pb-1 text-sm text-muted-foreground">средний балл из {BRS_MAX.total}</span>
+        <span className="pb-1 text-sm text-muted-foreground">
+          средний балл из {BRS_MAX.total} по текущим баллам
+        </span>
       </div>
       <Bar value={averagePoints} max={BRS_MAX.total} className="mt-3" />
       <dl className="mt-4 grid grid-cols-2 gap-3">
