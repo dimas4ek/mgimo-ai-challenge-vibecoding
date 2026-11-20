@@ -261,6 +261,7 @@ const transcriptCertificate: Certificate = {
   token: transcriptToken,
   verifyPath: `/verify/${transcriptToken}`,
   purpose: "Для стажировки в лаборатории",
+  // Только дисциплины с итогом: незакрытые в выписку не попадают (#38).
   grades: [
     {
       semester: "Весенний семестр 2025/26",
@@ -285,14 +286,6 @@ const transcriptCertificate: Certificate = {
       credits: 2,
       totalPoints: 74,
       result: "passed",
-    },
-    {
-      semester: "Осенний семестр 2026/27",
-      subject: "Машинное обучение",
-      controlForm: "exam",
-      credits: 5,
-      totalPoints: 52,
-      result: "pending",
     },
     {
       semester: "Осенний семестр 2026/27",

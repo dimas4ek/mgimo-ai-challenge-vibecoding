@@ -6,6 +6,7 @@ import { groupBySemester } from "./model";
  * Таблица оценок в выписке (#32): снимок на дату выдачи, по семестрам. На телефоне — строки-карточки
  * (без горизонтального скролла), на широком экране и при печати — таблица. Строка не рвётся
  * между страницами, шапка таблицы повторяется на каждой странице (стандартное поведение thead).
+ * В снимке только дисциплины с итогом (#38); если их нет — так и пишем.
  */
 export function GradesTable({ grades }: { grades: readonly CertificateGrade[] }) {
   const groups = groupBySemester(grades);
@@ -14,6 +15,11 @@ export function GradesTable({ grades }: { grades: readonly CertificateGrade[] })
       <h2 id="certificate-grades" className="text-lg font-semibold">
         Оценки на дату выдачи
       </h2>
+      {groups.length === 0 && (
+        <p className="mt-2 text-sm text-muted-foreground">
+          Итоговых оценок на дату выдачи ещё не было.
+        </p>
+      )}
       {groups.map((group) => (
         <div key={group.semester} className="mt-4 break-inside-avoid-page">
           <h3 className="text-sm font-semibold text-muted-foreground">{group.semester}</h3>

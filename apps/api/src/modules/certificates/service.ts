@@ -6,7 +6,7 @@ import {
   REQUEST_CATEGORY,
   type RequestType,
 } from "@aihs/contract";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, ne } from "drizzle-orm";
 import type { Db } from "../../db/client";
 import {
   certificates,
@@ -33,6 +33,7 @@ const isCertificateType = (type: RequestType) => REQUEST_CATEGORY[type] === "cer
 
 /**
  * Снимок оценок студента для выписки: все семестры из БД, по порядку семестров и дисциплин.
+ * Только дисциплины с итогом: незакрытые (`pending`) с промежуточными баллами в документ не идут.
  * Вызывается, когда выписка выдаётся (заявка становится `ready`), и сохраняется вместе со справкой.
  */
 export async function snapshotGrades(db: Db, studentId: string): Promise<CertificateGrade[]> {
@@ -49,7 +50,7 @@ export async function snapshotGrades(db: Db, studentId: string): Promise<Certifi
     .from(grades)
     .innerJoin(semesters, eq(semesters.id, grades.semesterId))
     .innerJoin(subjects, eq(subjects.id, grades.subjectId))
-    .where(eq(grades.studentId, studentId))
+    .where(and(eq(grades.studentId, studentId), ne(grades.result, "pending")))
     .orderBy(asc(subjects.name), asc(grades.id));
   return rows
     .map(({ semesterPoints, examPoints, ...r }) => ({
