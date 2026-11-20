@@ -197,7 +197,7 @@ export function GradesPage({ now = new Date() }: { now?: Date }) {
         <div className="flex flex-col gap-6">
           <NextExamCard disciplines={grades.data.disciplines} now={now} />
           <Summary grades={grades.data} now={now} />
-          <ForecastCard disciplines={grades.data.disciplines} />
+          <ForecastCard disciplines={grades.data.disciplines} pastDebts={grades.data.pastDebts} />
           <PastDebts debts={grades.data.pastDebts} />
           <section aria-labelledby="disciplines-title">
             <h2 id="disciplines-title" className="mb-3 text-lg font-semibold">

@@ -1,4 +1,4 @@
-import type { DisciplineGrade } from "@aihs/contract";
+import type { DisciplineGrade, PastDebt } from "@aihs/contract";
 import { CircleAlert, CircleCheck, RotateCcw, Target } from "lucide-react";
 import { useState } from "react";
 import { cn } from "../../lib/cn";
@@ -45,10 +45,19 @@ function NeedBadge({ need, discipline }: { need: DisciplineNeed; discipline?: Di
 /**
  * Калькулятор «что нужно набрать» (#24): цель на выбор, итог простыми словами и по каждой
  * дисциплине — сколько баллов нужно на экзамене или зачёте. Правило цели показано под выбором.
+ * Долги прошлых сессий (#37) — отдельные строки «Пересдать: …» в цели «Закрыть сессию».
  */
-export function ForecastCard({ disciplines }: { disciplines: readonly DisciplineGrade[] }) {
-  const all = forecast(disciplines);
-  const byId = new Map(disciplines.map((d) => [d.id, d]));
+export function ForecastCard({
+  disciplines,
+  pastDebts = [],
+}: {
+  disciplines: readonly DisciplineGrade[];
+  pastDebts?: readonly PastDebt[];
+}) {
+  const all = forecast(disciplines, pastDebts);
+  const byId = new Map<string, DisciplineGrade>(
+    [...disciplines, ...pastDebts].map((d) => [d.id, d]),
+  );
   // По умолчанию — самая амбициозная цель, которая ещё достижима.
   const fallback = PREFERENCE.find((g) => all.find((f) => f.goal === g)?.reachable) ?? "close";
   const [goal, setGoal] = useState<ForecastGoal>(fallback);
@@ -111,7 +120,9 @@ export function ForecastCard({ disciplines }: { disciplines: readonly Discipline
         <ul className="mt-3 divide-y divide-border">
           {pending.map((i) => (
             <li key={i.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
-              <span className="min-w-0 text-sm font-medium">{i.subject}</span>
+              <span className="min-w-0 text-sm font-medium">
+                {i.semester ? `Пересдать: ${i.subject}, ${i.semester.toLowerCase()}` : i.subject}
+              </span>
               <NeedBadge need={i.need} discipline={byId.get(i.id)} />
             </li>
           ))}

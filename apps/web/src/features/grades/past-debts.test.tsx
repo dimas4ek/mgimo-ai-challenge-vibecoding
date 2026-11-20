@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { fixtures, type Grades, routes } from "@aihs/contract";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
 import { setupServer } from "msw/node";
 import { MemoryRouter } from "react-router";
@@ -64,6 +64,21 @@ describe("долги прошлых сессий", () => {
     // Сводка объясняет, что долг прошлый; калькулятор на месте.
     expect(screen.getByText("с прошлых сессий")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Что нужно набрать" })).toBeTruthy();
+  });
+
+  it("калькулятор: «Закрыть сессию» требует пересдать прошлый долг (#37)", async () => {
+    const debt = fixtures.grades.pastDebts[0];
+    if (!debt) throw new Error("нет прошлого долга в фикстуре");
+    open();
+    const card = (await screen.findByRole("heading", { name: "Что нужно набрать" })).closest(
+      "section, div",
+    ) as HTMLElement;
+    fireEvent.click(within(card).getByRole("button", { name: "Закрыть сессию" }));
+    expect(
+      within(card).getByText(`Пересдать: ${debt.subject}, ${debt.semester.toLowerCase()}`),
+    ).toBeTruthy();
+    expect(within(card).getByText("Пересдача: от 30 из 40")).toBeTruthy();
+    expect(within(card).getByRole("status").textContent).toMatch(/по 3 дисциплинам из 5/);
   });
 
   it("долгов нет — блока и пояснения нет", async () => {

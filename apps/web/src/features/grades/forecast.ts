@@ -1,7 +1,7 @@
 // Калькулятор «что нужно набрать»: по текущим баллам БРС — сколько получить на оставшихся
 // экзаменах и зачётах, чтобы закрыть сессию, получать стипендию или повышенную стипендию.
 // Правила — вымышленное «Положение о стипендиях AI High School», они же показываются в UI.
-import type { DisciplineGrade } from "@aihs/contract";
+import type { DisciplineGrade, PastDebt } from "@aihs/contract";
 
 /** Цель студента на сессию. */
 export type ForecastGoal = "close" | "scholarship" | "increased";
@@ -50,8 +50,11 @@ export interface GoalForecast {
   reachable: boolean;
   /** Сколько дисциплин ещё требуют баллов (`need` или `retake`). */
   remaining: number;
-  /** По дисциплинам в порядке входа. */
-  items: { id: string; subject: string; need: DisciplineNeed }[];
+  /**
+   * По дисциплинам в порядке входа, для `close` следом — долги прошлых сессий
+   * (у них есть `semester`, нужна пересдача).
+   */
+  items: { id: string; subject: string; semester?: string; need: DisciplineNeed }[];
 }
 
 const ORDER: ForecastGoal[] = ["close", "scholarship", "increased"];
@@ -78,14 +81,25 @@ function needFor(goal: ForecastGoal, d: DisciplineGrade): DisciplineNeed {
   return examPoints > EXAM_MAX ? { kind: "impossible" } : { kind: "need", examPoints };
 }
 
-/** Прогноз по трём целям: `close`, `scholarship`, `increased` — в этом порядке. Чистая функция. */
-export function forecast(disciplines: readonly DisciplineGrade[]): GoalForecast[] {
+/**
+ * Прогноз по трём целям: `close`, `scholarship`, `increased` — в этом порядке. Чистая функция.
+ * Долги прошлых сессий (`pastDebts`) входят только в `close`: без их пересдачи сессия не закрыта.
+ */
+export function forecast(
+  disciplines: readonly DisciplineGrade[],
+  pastDebts: readonly PastDebt[] = [],
+): GoalForecast[] {
   return ORDER.map((goal) => {
-    const items = disciplines.map((d) => ({
+    const items: GoalForecast["items"] = disciplines.map((d) => ({
       id: d.id,
       subject: d.subject,
       need: needFor(goal, d),
     }));
+    if (goal === "close") {
+      for (const d of pastDebts) {
+        items.push({ id: d.id, subject: d.subject, semester: d.semester, need: needFor(goal, d) });
+      }
+    }
     return {
       goal,
       reachable: items.every((i) => i.need.kind !== "impossible"),
