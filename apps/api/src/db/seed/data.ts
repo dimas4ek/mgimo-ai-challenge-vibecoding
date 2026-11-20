@@ -301,7 +301,15 @@ const students: StudentDef[] = [
 type GradeDef = Pick<
   Insert<typeof schema.grades>,
   "controlForm" | "credits" | "semesterPoints" | "examPoints" | "result"
-> & { subject: SubjectKey; teacher: TeacherKey };
+> & {
+  subject: SubjectKey;
+  teacher: TeacherKey;
+  /**
+   * Экзамен или зачёт: `day` — сдвиг в днях от начала сессии (экзамены внутри сессии,
+   * зачёты — отрицательный сдвиг, в последнюю неделю перед ней); `null` — дата не назначена.
+   */
+  exam: { day: number; start: string; room: string } | null;
+};
 
 const grades: Record<StudentDef["user"], GradeDef[]> = {
   student: [
@@ -313,6 +321,7 @@ const grades: Record<StudentDef["user"], GradeDef[]> = {
       semesterPoints: 52,
       examPoints: null,
       result: "pending",
+      exam: { day: 1, start: "10:00", room: "А-214" },
     },
     {
       subject: "nlp",
@@ -322,6 +331,7 @@ const grades: Record<StudentDef["user"], GradeDef[]> = {
       semesterPoints: 41,
       examPoints: 30,
       result: "good",
+      exam: { day: -4, start: "12:00", room: "Б-108" },
     },
     {
       subject: "ethics",
@@ -331,6 +341,7 @@ const grades: Record<StudentDef["user"], GradeDef[]> = {
       semesterPoints: 58,
       examPoints: 35,
       result: "passed",
+      exam: { day: -6, start: "14:00", room: "Б-305" },
     },
     {
       subject: "prob",
@@ -340,6 +351,7 @@ const grades: Record<StudentDef["user"], GradeDef[]> = {
       semesterPoints: 22,
       examPoints: 15,
       result: "unsatisfactory",
+      exam: { day: 8, start: "09:00", room: "А-301" },
     },
     {
       subject: "cv",
@@ -349,6 +361,7 @@ const grades: Record<StudentDef["user"], GradeDef[]> = {
       semesterPoints: 47,
       examPoints: null,
       result: "pending",
+      exam: null,
     },
   ],
   student2: [
@@ -360,6 +373,7 @@ const grades: Record<StudentDef["user"], GradeDef[]> = {
       semesterPoints: 38,
       examPoints: null,
       result: "pending",
+      exam: { day: 3, start: "10:00", room: "А-112" },
     },
     {
       subject: "linalg",
@@ -369,6 +383,7 @@ const grades: Record<StudentDef["user"], GradeDef[]> = {
       semesterPoints: 44,
       examPoints: null,
       result: "pending",
+      exam: { day: 10, start: "13:00", room: "А-112" },
     },
     {
       subject: "python",
@@ -378,6 +393,7 @@ const grades: Record<StudentDef["user"], GradeDef[]> = {
       semesterPoints: 55,
       examPoints: 33,
       result: "excellent",
+      exam: { day: -3, start: "10:00", room: "К-201" },
     },
     {
       subject: "databases",
@@ -387,6 +403,7 @@ const grades: Record<StudentDef["user"], GradeDef[]> = {
       semesterPoints: 30,
       examPoints: null,
       result: "pending",
+      exam: { day: -5, start: "15:00", room: "К-204" },
     },
     {
       subject: "english",
@@ -396,10 +413,18 @@ const grades: Record<StudentDef["user"], GradeDef[]> = {
       semesterPoints: 51,
       examPoints: 30,
       result: "passed",
+      exam: { day: -2, start: "11:30", room: "Л-17" },
     },
   ],
   staff: [],
 };
+
+/** Дата экзамена по сдвигу от начала сессии; воскресенье сдвигается: экзамен — на понедельник, зачёт — на субботу. */
+function examDate(sessionStart: string, day: number): string {
+  const date = addDays(sessionStart, day);
+  const isSunday = addDays(mondayOf(date), 6) === date;
+  return isSunday ? addDays(date, day < 0 ? -1 : 1) : date;
+}
 
 /** Текущий семестр по московской дате: сентябрь–январь — осенний, февраль–август — весенний. */
 function currentSemester(today: string): Insert<typeof schema.semesters> {
@@ -587,6 +612,10 @@ export function buildSeedData(
       semesterPoints: g.semesterPoints,
       examPoints: g.examPoints,
       result: g.result,
+      examDate:
+        g.exam && semester.sessionStart ? examDate(semester.sessionStart, g.exam.day) : null,
+      examStart: g.exam?.start ?? null,
+      examRoom: g.exam?.room ?? null,
     })),
   );
 

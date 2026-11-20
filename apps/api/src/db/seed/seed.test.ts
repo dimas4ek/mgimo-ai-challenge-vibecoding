@@ -3,6 +3,7 @@ import { and, asc, eq, gte, lte } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createDb, type Db, type DbHandle } from "../client";
 import * as schema from "../schema";
+import { buildSeedData } from "./data";
 import { seed, seedAccounts } from "./index";
 
 // Четверг 19.11.2026, 12:00 по Москве. Текущая неделя — 16–22.11.
@@ -166,6 +167,19 @@ describe("seed", () => {
     expect(subjectSets[0]).not.toEqual(subjectSets[1]);
     const results = (await db.select().from(schema.grades)).map((g) => g.result);
     expect(results).toContain("pending");
+  });
+
+  it("весной даты экзаменов попадают в весеннюю сессию, зачёты — до неё", () => {
+    const data = buildSeedData(new Date("2027-04-15T09:00:00Z"), seedAccounts);
+    const [semester] = data.semesters;
+    expect(semester).toMatchObject({ sessionStart: "2027-06-08", sessionEnd: "2027-06-30" });
+    const dated = data.grades.filter((g) => g.examDate);
+    expect(dated.length).toBeGreaterThan(0);
+    for (const g of dated) {
+      const date = g.examDate ?? "";
+      if (g.controlForm === "exam") expect(date >= "2027-06-08" && date <= "2027-06-30").toBe(true);
+      else expect(date >= "2027-06-01" && date < "2027-06-08").toBe(true);
+    }
   });
 
   it("у заявок история начинается с submitted и кончается текущим статусом", async () => {

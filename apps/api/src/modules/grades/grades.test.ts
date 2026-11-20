@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../../app";
 import { createDb, type DbHandle } from "../../db/client";
 import { seed, seedAccounts } from "../../db/seed";
+import { addDays, mondayOf } from "../../lib/moscow-time";
 import { summarize } from "./service";
 
 const NOW = new Date("2026-11-19T09:00:00Z");
@@ -101,6 +102,37 @@ describe("GET /api/me/grades", () => {
     const theirs = (await grades("student2")).disciplines.map((d) => d.id);
     expect(theirs.length).toBeGreaterThan(0);
     expect(theirs.some((id) => mine.has(id))).toBe(false);
+  });
+
+  it("даты экзаменов: экзамен внутри сессии, зачёт за неделю до неё, без воскресений", async () => {
+    for (const who of ["student", "student2"] as const) {
+      const g = await grades(who);
+      const { startDate, endDate } = g.session ?? { startDate: "", endDate: "" };
+      const weekBefore = addDays(startDate, -7);
+      const scheduled = g.disciplines.filter((d) => d.exam !== null);
+      expect(scheduled.length).toBeGreaterThan(0);
+      for (const d of scheduled) {
+        const date = d.exam?.date ?? "";
+        if (d.controlForm === "exam") {
+          expect(date >= startDate && date <= endDate, `${d.subject}: ${date}`).toBe(true);
+        } else {
+          expect(date >= weekBefore && date < startDate, `${d.subject}: ${date}`).toBe(true);
+        }
+        expect(addDays(mondayOf(date), 6)).not.toBe(date);
+        expect(d.exam?.start).toMatch(/^\d{2}:\d{2}$/);
+      }
+    }
+    // Демо пустого состояния: у одной дисциплины дата ещё не назначена.
+    expect((await grades("student")).disciplines.some((d) => d.exam === null)).toBe(true);
+  });
+
+  it("даты экзаменов у двух студентов разные", async () => {
+    const slots = async (who: "student" | "student2") =>
+      (await grades(who)).disciplines.flatMap((d) =>
+        d.exam ? [`${d.exam.date} ${d.exam.start} ${d.exam.room}`] : [],
+      );
+    const mine = new Set(await slots("student"));
+    expect((await slots("student2")).some((s) => mine.has(s))).toBe(false);
   });
 
   it("без сессии → 401, сотруднику → 403", async () => {

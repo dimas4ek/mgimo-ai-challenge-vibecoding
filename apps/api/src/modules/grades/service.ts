@@ -28,7 +28,7 @@ export function summarize(disciplines: DisciplineGrade[]): GradesSummary {
 }
 
 /**
- * Успеваемость студента из сессии за текущий семестр: дисциплины с баллами БРС, сроки сессии
+ * Успеваемость студента из сессии за текущий семестр: дисциплины с баллами БРС и датами экзаменов, сроки сессии
  * и сводка. Студента или текущего семестра нет → `null` (→ 404).
  */
 export async function getGrades(db: Db, studentId: string): Promise<Grades | null> {
@@ -53,6 +53,9 @@ export async function getGrades(db: Db, studentId: string): Promise<Grades | nul
       semesterPoints: schema.grades.semesterPoints,
       examPoints: schema.grades.examPoints,
       result: schema.grades.result,
+      examDate: schema.grades.examDate,
+      examStart: schema.grades.examStart,
+      examRoom: schema.grades.examRoom,
     })
     .from(schema.grades)
     .innerJoin(schema.subjects, eq(schema.subjects.id, schema.grades.subjectId))
@@ -60,10 +63,13 @@ export async function getGrades(db: Db, studentId: string): Promise<Grades | nul
     .where(and(eq(schema.grades.studentId, studentId), eq(schema.grades.semesterId, semester.id)))
     .orderBy(asc(schema.subjects.name), asc(schema.grades.id));
 
-  const disciplines: DisciplineGrade[] = rows.map((r) => ({
+  const disciplines: DisciplineGrade[] = rows.map(({ examDate, examStart, examRoom, ...r }) => ({
     ...r,
     totalPoints: r.semesterPoints + (r.examPoints ?? 0),
-    exam: null,
+    exam:
+      examDate && examStart && examRoom
+        ? { date: examDate, start: examStart, room: examRoom }
+        : null,
   }));
   return {
     semester: semester.name,
