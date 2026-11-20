@@ -1,20 +1,18 @@
 import { serve } from "@hono/node-server";
 import { createApp } from "./app";
 import { createDbFromEnv } from "./db/client";
-import { users } from "./db/schema";
-import { seed } from "./db/seed";
+import { refreshSafely, startDemoDataRefresh } from "./db/seed/refresh";
 
 const port = Number(process.env.PORT ?? 3000);
 const hostname = process.env.HOST ?? "0.0.0.0";
 
 const handle = await createDbFromEnv();
 await handle.migrate();
-// Пустая БД (первый запуск) сразу получает демо-данные, чтобы тестовые аккаунты работали.
-const [anyUser] = await handle.db.select({ id: users.id }).from(users).limit(1);
-if (!anyUser) {
-  await seed(handle.db, { now: new Date() });
-  console.log("БД была пустой: применён сид демо-данных");
-}
+// Демо-данные — на текущую неделю по Москве: пустая база засевается, база с прошлой недели
+// пересевается (иначе к концу судейства расписание опустеет). Дальше проверка раз в час.
+await refreshSafely(handle.db, new Date());
+startDemoDataRefresh(handle.db);
+
 const app = createApp({ db: handle.db, staticDir: process.env.STATIC_DIR || undefined });
 
 serve({ fetch: app.fetch, port, hostname }, (info) => {
