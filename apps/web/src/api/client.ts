@@ -20,13 +20,17 @@ export const isApiError = (e: unknown, status?: number): e is ApiClientError =>
   e instanceof ApiClientError && (status === undefined || e.status === status);
 
 /**
- * Что посоветовать после ошибки. Нет связи — проверить интернет; сервер ответил ошибкой —
- * интернет ни при чём, просим попробовать позже. Неизвестную ошибку считаем сетевой.
+ * Что посоветовать после ошибки (#41). Нет связи — проверить интернет; 5xx или ответ не по контракту —
+ * сбой сервера, попробовать позже; остальные 4xx — запрос не подошёл, обновить страницу.
+ * Неизвестную ошибку считаем сетевой.
  */
 export function retryHint(error: unknown): string {
-  return isApiError(error) && error.code !== "network"
-    ? "На сервере что-то пошло не так. Попробуйте чуть позже."
-    : "Проверьте интернет и попробуйте ещё раз.";
+  if (!isApiError(error) || error.code === "network")
+    return "Проверьте интернет и попробуйте ещё раз.";
+  if (error.status >= 500 || error.code === "bad_response") {
+    return "На сервере что-то пошло не так. Попробуйте чуть позже.";
+  }
+  return "Не получилось загрузить. Обновите страницу.";
 }
 
 type Body<R extends RouteDef> = R["body"] extends z.ZodType ? z.input<R["body"]> : never;
