@@ -1,6 +1,7 @@
 import { useProfile } from "../../api/hooks";
 import { Card, CardTitle, ErrorState, PageHeader, Skeleton } from "../../ui";
 import { LogoutButton } from "../auth/LogoutButton";
+import { DemoResetCard } from "./DemoResetCard";
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -49,6 +50,7 @@ export function ProfilePage() {
               <Row label="Почта" value={profile.data.email} />
             </dl>
           </Card>
+          <DemoResetCard />
         </div>
       )}
       <LogoutButton className="mt-6 w-full sm:w-auto" />

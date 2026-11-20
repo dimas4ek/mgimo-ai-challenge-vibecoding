@@ -77,6 +77,8 @@ export default defineConfig(({ mode }) => {
     server: { proxy },
     preview: { proxy },
     // Общая настройка тестов: таймауты Testing Library под параллельный `pnpm test`.
-    test: { setupFiles: ["./src/test-setup.ts"] },
+    // testTimeout заметно больше asyncUtilTimeout (5 с в test-setup.ts): иначе медленный `findBy`
+    // упирается в таймаут самого теста раньше, чем успевает дождаться.
+    test: { setupFiles: ["./src/test-setup.ts"], testTimeout: 20_000 },
   };
 });

@@ -146,6 +146,22 @@ describe("профиль и выход", () => {
     await waitFor(() => expect(where(router)).toBe(`${paths.login}?next=%2Fprofile`));
   });
 
+  it("сброс демо-данных: подтверждение, затем «Готово»; созданная заявка исчезает", async () => {
+    resetMockDb({ as: "student" });
+    await fetch(new URL(routes.me.requests.create.path, location.href), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ type: "transcript" }),
+    });
+    const before = await (await fetch(new URL(routes.me.requests.list.path, location.href))).json();
+    open(paths.profile);
+    fireEvent.click(await screen.findByRole("button", { name: "Сбросить демо-данные" }));
+    fireEvent.click(screen.getByRole("button", { name: "Да, сбросить" }));
+    expect(await screen.findByText(/заявки и уведомления вернулись к исходным/)).toBeTruthy();
+    const after = await (await fetch(new URL(routes.me.requests.list.path, location.href))).json();
+    expect(after.length).toBe(before.length - 1);
+  });
+
   it("ошибка загрузки профиля — сообщение и «Повторить»", async () => {
     resetMockDb({ as: "student" });
     server.use(http.get(routes.me.profile.path, () => HttpResponse.json({}, { status: 500 })));

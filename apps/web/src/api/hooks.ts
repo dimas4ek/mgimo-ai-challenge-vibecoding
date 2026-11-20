@@ -93,6 +93,18 @@ export function useLogout() {
 
 // ── студент ─────────────────────────────────────────────────────────────
 
+/**
+ * Сброс демо-данных своего аккаунта (заявки, уведомления) к исходному сиду. После успеха
+ * перезапрашиваем всё, кроме `me`: сессия та же, а данные во всех разделах поменялись.
+ */
+export function useDemoReset() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.me.demoReset(),
+    onSuccess: () => qc.invalidateQueries({ predicate: (q) => q.queryKey[0] !== queryKeys.me[0] }),
+  });
+}
+
 export function useProfile() {
   return useQuery({ queryKey: queryKeys.profile, queryFn: ({ signal }) => api.me.profile(signal) });
 }

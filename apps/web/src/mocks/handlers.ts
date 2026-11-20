@@ -96,6 +96,14 @@ export const handlers: HttpHandler[] = [
     () => requireStudent() ?? HttpResponse.json(fixtures.weekSchedule),
   ),
   http.get(routes.me.grades.path, () => requireStudent() ?? HttpResponse.json(fixtures.grades)),
+  http.post(routes.me.demoReset.path, () => {
+    const denied = requireStudent();
+    if (denied) return denied;
+    const me = db.me;
+    db = fresh();
+    db.me = me;
+    return HttpResponse.json({ ok: true as const });
+  }),
 
   http.get(
     routes.me.requests.list.path,
