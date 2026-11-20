@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { IdSchema, IsoDateSchema } from "./common";
+import { IdSchema, IsoDateSchema, TimeSchema } from "./common";
 
 /** Форма контроля: экзамен, зачёт, дифференцированный зачёт. */
 export const ControlFormSchema = z.enum(["exam", "credit", "graded_credit"]);
@@ -23,6 +23,16 @@ export type GradeResult = z.infer<typeof GradeResultSchema>;
 /** Максимум баллов БРС: семестр + экзамен = 100. */
 export const BRS_MAX = { semester: 60, exam: 40, total: 100 } as const;
 
+/** Когда и где экзамен или зачёт по дисциплине (время по Москве). */
+export const ExamSlotSchema = z.object({
+  date: IsoDateSchema,
+  /** Начало, `HH:MM`. */
+  start: TimeSchema,
+  /** Аудитория, например «А-214». */
+  room: z.string().min(1),
+});
+export type ExamSlot = z.infer<typeof ExamSlotSchema>;
+
 /** Строка успеваемости по одной дисциплине. */
 export const DisciplineGradeSchema = z.object({
   id: IdSchema,
@@ -38,6 +48,8 @@ export const DisciplineGradeSchema = z.object({
   /** Сумма, 0–100. */
   totalPoints: z.number().min(0).max(BRS_MAX.total),
   result: GradeResultSchema,
+  /** Экзамен или зачёт; `null` — дата ещё не назначена. */
+  exam: ExamSlotSchema.nullable(),
 });
 export type DisciplineGrade = z.infer<typeof DisciplineGradeSchema>;
 

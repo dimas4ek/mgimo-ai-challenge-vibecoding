@@ -125,6 +125,7 @@ const grades: Grades = {
       examPoints: null,
       totalPoints: 52,
       result: "pending",
+      exam: { date: "2027-01-12", start: "10:00", room: "А-214" },
     },
     {
       id: "2d3e4f5a-6b7c-4d8e-9f0a-1b2c3d4e5f02",
@@ -136,6 +137,7 @@ const grades: Grades = {
       examPoints: 30,
       totalPoints: 71,
       result: "good",
+      exam: { date: "2026-12-24", start: "12:00", room: "Б-108" },
     },
     {
       id: "2d3e4f5a-6b7c-4d8e-9f0a-1b2c3d4e5f03",
@@ -147,6 +149,7 @@ const grades: Grades = {
       examPoints: 35,
       totalPoints: 93,
       result: "passed",
+      exam: { date: "2026-12-22", start: "14:00", room: "Б-305" },
     },
     {
       id: "2d3e4f5a-6b7c-4d8e-9f0a-1b2c3d4e5f04",
@@ -158,6 +161,7 @@ const grades: Grades = {
       examPoints: 15,
       totalPoints: 37,
       result: "unsatisfactory",
+      exam: { date: "2027-01-19", start: "09:00", room: "А-301" },
     },
   ],
   summary: { averagePoints: 63.25, disciplinesTotal: 4, disciplinesPassed: 2, debts: 1 },

@@ -13,6 +13,7 @@ const d = (over: Partial<DisciplineGrade>): DisciplineGrade => ({
   examPoints: null,
   totalPoints: 40,
   result: "pending",
+  exam: null,
   ...over,
 });
 

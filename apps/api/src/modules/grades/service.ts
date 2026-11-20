@@ -63,6 +63,7 @@ export async function getGrades(db: Db, studentId: string): Promise<Grades | nul
   const disciplines: DisciplineGrade[] = rows.map((r) => ({
     ...r,
     totalPoints: r.semesterPoints + (r.examPoints ?? 0),
+    exam: null,
   }));
   return {
     semester: semester.name,
