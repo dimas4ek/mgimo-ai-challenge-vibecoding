@@ -144,6 +144,15 @@ export function nextExam(
   return { ...best, daysLeft: Math.round((utc(best.slot.date) - utc(today)) / DAY) };
 }
 
+/**
+ * Пояснение к «Долги» в сводке: API считает в `summary.debts` и прошлые долги (#30).
+ * Прошлых нет — `null`; все прошлые — «с прошлых сессий»; часть — «из них N с прошлых сессий».
+ */
+export function debtsNote(debts: number, pastDebts: number): string | null {
+  if (pastDebts <= 0) return null;
+  return pastDebts >= debts ? "с прошлых сессий" : `из них ${pastDebts} с прошлых сессий`;
+}
+
 /** «сегодня», «завтра», «через 3 дня». */
 export function whenLabel(daysLeft: number): string {
   if (daysLeft <= 0) return "сегодня";

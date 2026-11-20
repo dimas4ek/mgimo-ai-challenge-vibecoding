@@ -7,6 +7,7 @@ import { Badge, Card, CardTitle, EmptyState, ErrorState, PageHeader, Skeleton } 
 import { ForecastCard } from "./ForecastCard";
 import {
   controlFormLabel,
+  debtsNote,
   disciplineState,
   examLine,
   formatSessionRange,
@@ -17,6 +18,7 @@ import {
   sortForDisplay,
   whenLabel,
 } from "./model";
+import { PastDebts } from "./PastDebts";
 
 /** Полоса заполнения. Цифры всегда рядом текстом, полоса — только подсказка. */
 function Bar({
@@ -78,6 +80,7 @@ function NextExamCard({ disciplines, now }: { disciplines: DisciplineGrade[]; no
 
 function Summary({ grades, now }: { grades: Grades; now: Date }) {
   const { averagePoints, disciplinesPassed, disciplinesTotal, debts } = grades.summary;
+  const note = debtsNote(debts, grades.pastDebts.length);
   return (
     <Card>
       <CardTitle as="h2">Как у меня дела</CardTitle>
@@ -112,6 +115,7 @@ function Summary({ grades, now }: { grades: Grades; now: Date }) {
             )}
             {debts || "Нет"}
           </dd>
+          {note && <dd className="mt-0.5 text-xs text-muted-foreground">{note}</dd>}
         </div>
       </dl>
       {grades.session && (
@@ -194,6 +198,7 @@ export function GradesPage({ now = new Date() }: { now?: Date }) {
           <NextExamCard disciplines={grades.data.disciplines} now={now} />
           <Summary grades={grades.data} now={now} />
           <ForecastCard disciplines={grades.data.disciplines} />
+          <PastDebts debts={grades.data.pastDebts} />
           <section aria-labelledby="disciplines-title">
             <h2 id="disciplines-title" className="mb-3 text-lg font-semibold">
               Дисциплины

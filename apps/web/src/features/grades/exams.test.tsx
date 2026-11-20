@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
 import { setupServer } from "msw/node";
+import { MemoryRouter } from "react-router";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createQueryClient } from "../../api/hooks";
 import { handlers, resetMockDb } from "../../mocks/handlers";
@@ -84,7 +85,9 @@ function open(grades?: Grades) {
   client.setDefaultOptions({ queries: { retry: false } });
   render(
     <QueryClientProvider client={client}>
-      <GradesPage now={NOW} />
+      <MemoryRouter>
+        <GradesPage now={NOW} />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
