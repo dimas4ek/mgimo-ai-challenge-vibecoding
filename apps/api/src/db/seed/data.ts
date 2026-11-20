@@ -1,7 +1,7 @@
 // Демо-данные вымышленного вуза AI High School (.claude/rules/fictional-data.md).
 // Совпадения ФИО с реальными людьми случайны. Все даты считаются от `now` по Москве.
 import { createHash } from "node:crypto";
-import { addDays, mondayOf, moscowDate } from "../../lib/moscow-time";
+import { addDays, mondayOf, moscowDate, moscowDateTime } from "../../lib/moscow-time";
 import type * as schema from "../schema";
 
 type Insert<T extends { $inferInsert: unknown }> = T["$inferInsert"];
@@ -480,6 +480,17 @@ export function buildSeedData(
 
   const lessons: SeedData["lessons"] = [];
   const lessonChanges: SeedData["lessonChanges"] = [];
+  // Изменения текущей и следующей недели: из них ниже строятся уведомления студентам группы.
+  const scheduleChanges: {
+    key: string;
+    groupKey: GroupKey;
+    weekMonday: string;
+    title: string;
+    body: string;
+    /** Исходная дата пары и дата, когда она теперь идёт (отличаются только у переноса). */
+    date: string;
+    lessonDate: string;
+  }[] = [];
   for (const [groupKey, group] of Object.entries(groups) as [GroupKey, GroupDef][]) {
     for (const week of WEEKS) {
       const weekMonday = addDays(monday, 7 * week);
@@ -512,13 +523,39 @@ export function buildSeedData(
           room,
         });
         if (ov) {
+          const note = ov.note(date);
           lessonChanges.push({
             lessonId,
             kind: ov.kind,
-            note: ov.note(date),
+            note,
             originalDate: ov.kind === "moved" ? date : null,
             originalStart: ov.kind === "moved" ? PAIRS[slot.pair].start : null,
           });
+          if (week === 0 || week === 1) {
+            const subject = subjects[slot.subject];
+            const when = `${ddmm(date)} в ${PAIRS[slot.pair].start}`;
+            scheduleChanges.push({
+              key: `${groupKey}:${week}:${slot.day}:${slot.pair}`,
+              groupKey,
+              weekMonday,
+              date,
+              lessonDate,
+              ...(ov.kind === "moved"
+                ? {
+                    title: `${subject}: пара перенесена`,
+                    body: `${note}. Новое время: ${ddmm(lessonDate)} в ${PAIRS[pair].start}, ауд. ${room}.`,
+                  }
+                : ov.kind === "replaced"
+                  ? {
+                      title: `${subject}: ${ov.room ? "замена аудитории" : "замена преподавателя"}`,
+                      body: `${when}, ауд. ${room}. ${note}.`,
+                    }
+                  : {
+                      title: `${subject}: пара ${ddmm(date)} отменена`,
+                      body: `${when}. ${note}.`,
+                    }),
+            });
+          }
         }
       }
     }
@@ -647,7 +684,6 @@ export function buildSeedData(
     });
   }
 
-  const scheduleLink = `/schedule?week=${monday}`;
   const notificationDefs: (Omit<
     Insert<typeof schema.notifications>,
     "id" | "userId" | "createdAt"
@@ -665,16 +701,6 @@ export function buildSeedData(
       link: `/requests/${id.request("s1-retake")}`,
       read: false,
       hoursAgo: 12,
-    },
-    {
-      key: "s1-nlp-moved",
-      user: "student",
-      type: "schedule_change",
-      title: "Семинар по NLP перенесён",
-      body: `Семинар ${ddmm(addDays(monday, 2))} в 09:00 перенесён на ${ddmm(addDays(monday, 1))} в 13:00, ауд. А-305.`,
-      link: scheduleLink,
-      read: false,
-      hoursAgo: 60,
     },
     {
       key: "s1-coursework",
@@ -707,16 +733,6 @@ export function buildSeedData(
       hoursAgo: 48,
     },
     {
-      key: "s2-db-moved",
-      user: "student2",
-      type: "schedule_change",
-      title: "Лабораторная по базам данных перенесена",
-      body: `Пара ${ddmm(monday)} в 13:00 перенесена на субботу ${ddmm(addDays(monday, 5))} в 09:00.`,
-      link: scheduleLink,
-      read: false,
-      hoursAgo: 80,
-    },
-    {
       key: "s2-library",
       user: "student2",
       type: "news",
@@ -737,6 +753,26 @@ export function buildSeedData(
       hoursAgo: 2,
     },
   ];
+  // Уведомления о переносах, заменах и отменах выводим из `overrides`, чтобы ни одно изменение
+  // не осталось только в расписании. Приходят вечером за двое суток до первой затронутой даты
+  // (но не позже «сейчас»); изменения, которые уже прошли, прочитаны.
+  for (const c of scheduleChanges) {
+    const [first, last] = [c.date, c.lessonDate].sort() as [string, string];
+    const noticeAt = moscowDateTime(addDays(first, -2), "18:00").getTime();
+    const hoursAgo = Math.max(1, Math.ceil((now.getTime() - noticeAt) / 3_600_000));
+    for (const s of students.filter((st) => st.group === c.groupKey)) {
+      notificationDefs.push({
+        key: `schedule:${c.key}:${s.user}`,
+        user: s.user,
+        type: "schedule_change",
+        title: c.title,
+        body: c.body,
+        link: `/schedule?week=${c.weekMonday}`,
+        read: last < today,
+        hoursAgo,
+      });
+    }
+  }
   const notifications: SeedData["notifications"] = notificationDefs.map(
     ({ key, user, hoursAgo, ...n }) => ({
       ...n,

@@ -113,6 +113,40 @@ describe("seed", () => {
     expect(moved.every((m) => m.originalDate && m.originalStart)).toBe(true);
   });
 
+  it("о каждом изменении расписания текущей и следующей недели студент получает уведомление", async () => {
+    for (const s of await db.select().from(schema.students)) {
+      const changes = await db
+        .select({ note: schema.lessonChanges.note })
+        .from(schema.lessonChanges)
+        .innerJoin(schema.lessons, eq(schema.lessons.id, schema.lessonChanges.lessonId))
+        .where(
+          and(
+            eq(schema.lessons.groupId, s.groupId),
+            gte(schema.lessons.date, "2026-11-16"),
+            lte(schema.lessons.date, "2026-11-29"),
+          ),
+        );
+      const notes = await db
+        .select()
+        .from(schema.notifications)
+        .where(
+          and(
+            eq(schema.notifications.userId, s.userId),
+            eq(schema.notifications.type, "schedule_change"),
+          ),
+        );
+      expect(changes.length).toBeGreaterThanOrEqual(3);
+      expect(notes).toHaveLength(changes.length);
+      for (const c of changes) {
+        expect(notes.some((n) => n.body.includes(c.note))).toBe(true);
+      }
+      for (const n of notes) {
+        expect(n.link).toMatch(/^\/schedule\?week=2026-11-(16|23)$/);
+        expect(n.createdAt.getTime()).toBeLessThanOrEqual(NOW.getTime());
+      }
+    }
+  });
+
   it("заполняет оценки, текущий семестр и сессию, данные у студентов разные", async () => {
     const [semester] = await db.select().from(schema.semesters);
     expect(semester).toMatchObject({
