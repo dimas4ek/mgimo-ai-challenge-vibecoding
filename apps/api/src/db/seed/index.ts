@@ -3,6 +3,7 @@ import { inArray, notInArray } from "drizzle-orm";
 import type { Db } from "../client";
 import * as schema from "../schema";
 import { buildSeedData } from "./data";
+import { setSeededAt } from "./seeded-at";
 
 /**
  * Тестовые аккаунты вымышленного вуза. Пароли тоже вымышленные, они же будут в README для жюри.
@@ -84,5 +85,7 @@ export async function seed(db: Db, options: SeedOptions): Promise<void> {
     await tx.insert(schema.requests).values(data.requests);
     await tx.insert(schema.requestHistory).values(data.requestHistory);
     await tx.insert(schema.notifications).values(data.notifications);
+    // От этого момента построено расписание: сброс демо-данных строит заявки и уведомления от него же.
+    await setSeededAt(tx, options.now);
   });
 }

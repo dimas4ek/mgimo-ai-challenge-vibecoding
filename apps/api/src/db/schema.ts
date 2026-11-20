@@ -285,3 +285,12 @@ export const notifications = pgTable(
   },
   (t) => [index("notifications_user_idx").on(t.userId)],
 );
+
+/**
+ * Служебные отметки сида: одна строка (`id = 1`). `seededAt` — момент последнего засева,
+ * от него сброс демо-данных строит заявки и уведомления, чтобы они совпадали с расписанием.
+ */
+export const seedMeta = pgTable("seed_meta", {
+  id: integer("id").primaryKey(),
+  seededAt: timestamp("seeded_at", { withTimezone: true }).notNull(),
+});
