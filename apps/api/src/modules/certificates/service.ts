@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import {
   type Certificate,
+  type CertificateGrade,
   type CertificateVerification,
   REQUEST_CATEGORY,
   type RequestType,
@@ -19,6 +20,14 @@ export function initialsOf(lastName: string, firstName: string, middleName: stri
 }
 
 const isCertificateType = (type: RequestType) => REQUEST_CATEGORY[type] === "certificate";
+
+/**
+ * Снимок оценок студента для выписки: все семестры из БД, по порядку семестров и дисциплин.
+ * Вызывается, когда выписка выдаётся (заявка становится `ready`), и сохраняется вместе со справкой.
+ */
+export async function snapshotGrades(_db: Db, _studentId: string): Promise<CertificateGrade[]> {
+  throw new Error("not implemented");
+}
 
 /**
  * Справка для печати по заявке студента. Выдаётся только для заявки-справки в статусе `ready`
@@ -86,6 +95,7 @@ export async function getCertificate(
       group: row.group,
     },
     purpose: row.comment,
+    grades: null,
   };
 }
 
