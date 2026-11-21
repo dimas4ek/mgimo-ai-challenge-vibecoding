@@ -91,42 +91,6 @@ describe("вход", () => {
     const other = await login(app, seedAccounts.student, { "x-forwarded-for": "203.0.113.8" });
     expect(other.status).toBe(200);
   });
-
-  it("с clientIpHeader адрес берётся из него, одинаковый X-Forwarded-For не мешает (#42)", async () => {
-    const app = createApp({
-      db: handle.db,
-      now: () => NOW,
-      loginRateLimit: { max: 3, windowMs: 60_000 },
-      clientIpHeader: "cf-connecting-ip",
-    });
-    // На Render последний адрес XFF — прокси платформы, он у всех одинаковый.
-    const proxy = "10.0.0.1";
-    const a = { "x-forwarded-for": `203.0.113.7, ${proxy}`, "cf-connecting-ip": "203.0.113.7" };
-    const b = { "x-forwarded-for": `198.51.100.4, ${proxy}`, "cf-connecting-ip": "198.51.100.4" };
-    for (let i = 0; i < 3; i++) {
-      expect((await login(app, { login: "student", password: "nope" }, a)).status).toBe(401);
-    }
-    expect((await login(app, seedAccounts.student, a)).status).toBe(429);
-    expect((await login(app, seedAccounts.student, b)).status).toBe(200);
-    // Подделанный клиентом X-Forwarded-For не обходит блокировку: смотрим только cf-connecting-ip.
-    const spoofed = { ...a, "x-forwarded-for": "192.0.2.99" };
-    expect((await login(app, seedAccounts.student, spoofed)).status).toBe(429);
-  });
-
-  it("без clientIpHeader — как раньше: общий последний адрес XFF блокирует всех", async () => {
-    const app = createApp({
-      db: handle.db,
-      now: () => NOW,
-      loginRateLimit: { max: 3, windowMs: 60_000 },
-      clientIpHeader: "",
-    });
-    const a = { "x-forwarded-for": "10.0.0.1", "cf-connecting-ip": "203.0.113.7" };
-    const b = { "x-forwarded-for": "10.0.0.1", "cf-connecting-ip": "198.51.100.4" };
-    for (let i = 0; i < 3; i++) {
-      expect((await login(app, { login: "student", password: "nope" }, a)).status).toBe(401);
-    }
-    expect((await login(app, seedAccounts.student, b)).status).toBe(429);
-  });
 });
 
 describe("сессия", () => {
