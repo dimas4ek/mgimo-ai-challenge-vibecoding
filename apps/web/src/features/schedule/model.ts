@@ -1,13 +1,19 @@
 // Чистая логика расписания без React: что показать «сегодня», какая пара ближайшая, куда листать неделю.
 // Её же использует главная «Сегодня» (#21). Даты и время — всегда по Москве, а не по часам устройства.
-import type { Lesson, LessonChangeKind, LessonType } from "@aihs/contract";
+import {
+  type Lesson,
+  type LessonChangeKind,
+  type LessonType,
+  ScheduleQuerySchema,
+} from "@aihs/contract";
 
 /** Дата `YYYY-MM-DD` по Москве. */
 export type IsoDate = string;
 
 /** Возвращает дату из параметра week, если её принимает API расписания. */
-export function parseScheduleWeek(_value: string | null): IsoDate | null {
-  throw new Error("not implemented");
+export function parseScheduleWeek(value: string | null): IsoDate | null {
+  const result = ScheduleQuerySchema.safeParse({ week: value });
+  return result.success ? (result.data.week ?? null) : null;
 }
 
 const TZ = "Europe/Moscow";
@@ -53,6 +59,11 @@ export function addDays(date: IsoDate, days: number): IsoDate {
 export function mondayOf(date: IsoDate): IsoDate {
   const sinceMonday = (toUtc(date).getUTCDay() + 6) % 7;
   return addDays(date, -sinceMonday);
+}
+
+/** Дата для запроса: у первой доступной недели понедельник может быть за границей диапазона. */
+export function scheduleWeekQueryDate(monday: IsoDate): IsoDate | null {
+  return parseScheduleWeek(monday) ?? parseScheduleWeek(addDays(monday, 6));
 }
 
 const byStart = (a: Lesson, b: Lesson) =>

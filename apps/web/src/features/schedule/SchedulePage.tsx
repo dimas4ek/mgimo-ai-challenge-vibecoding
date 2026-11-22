@@ -17,11 +17,11 @@ import {
   mondayOf,
   moscowToday,
   nextLesson,
+  parseScheduleWeek,
+  scheduleWeekQueryDate,
 } from "./model";
 
 type View = "today" | "week";
-
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** «Сейчас», обновляется раз в минуту: подсветка «Идёт сейчас» не залипает. */
 function useNow(): Date {
@@ -42,10 +42,21 @@ export function SchedulePage() {
   const now = useNow();
   const today = moscowToday(now);
   const weekParam = params.get("week");
-  const week = weekParam && ISO_DATE.test(weekParam) ? mondayOf(weekParam) : null;
-  // Без явного view: есть неделя в адресе — показываем неделю, иначе «Сегодня».
+  const weekDate = parseScheduleWeek(weekParam);
+  const invalidWeek = weekParam !== null && weekDate === null;
+  const week = mondayOf(weekDate ?? today);
   const view: View =
-    (params.get("view") ?? (week ? "week" : "today")) === "week" ? "week" : "today";
+    invalidWeek || (params.get("view") ?? (weekDate ? "week" : "today")) === "week"
+      ? "week"
+      : "today";
+
+  useEffect(() => {
+    if (!invalidWeek) return;
+    const next = new URLSearchParams(params);
+    next.delete("week");
+    next.set("view", "week");
+    setParams(next, { replace: true });
+  }, [invalidWeek, params, setParams]);
 
   const update = (change: (p: URLSearchParams) => void) =>
     setParams(
@@ -63,11 +74,11 @@ export function SchedulePage() {
       if (next === "today") p.delete("week");
     });
 
-  const showWeek = (monday: IsoDate) =>
+  const showWeek = (date: IsoDate) =>
     update((p) => {
       p.set("view", "week");
-      if (monday === mondayOf(today)) p.delete("week");
-      else p.set("week", monday);
+      if (mondayOf(date) === mondayOf(today)) p.delete("week");
+      else p.set("week", date);
     });
 
   return (
@@ -107,7 +118,7 @@ export function SchedulePage() {
         {view === "today" ? (
           <TodayView today={today} now={now} onShowWeek={() => show("week")} />
         ) : (
-          <WeekView week={week ?? mondayOf(today)} today={today} now={now} onWeek={showWeek} />
+          <WeekView week={week} today={today} now={now} onWeek={showWeek} />
         )}
       </div>
     </>
@@ -206,9 +217,11 @@ function WeekView({
   week: IsoDate;
   today: IsoDate;
   now: Date;
-  onWeek: (monday: IsoDate) => void;
+  onWeek: (date: IsoDate) => void;
 }) {
   const isCurrent = week === mondayOf(today);
+  const previous = scheduleWeekQueryDate(addDays(week, -7));
+  const next = scheduleWeekQueryDate(addDays(week, 7));
   return (
     <div className="flex flex-col gap-4">
       <nav aria-label="Недели" className="flex items-center justify-between gap-2">
@@ -216,7 +229,8 @@ function WeekView({
           variant="ghost"
           size="icon"
           aria-label="Предыдущая неделя"
-          onClick={() => onWeek(addDays(week, -7))}
+          disabled={previous === null}
+          onClick={() => previous && onWeek(previous)}
         >
           <ChevronLeft />
         </Button>
@@ -238,12 +252,13 @@ function WeekView({
           variant="ghost"
           size="icon"
           aria-label="Следующая неделя"
-          onClick={() => onWeek(addDays(week, 7))}
+          disabled={next === null}
+          onClick={() => next && onWeek(next)}
         >
           <ChevronRight />
         </Button>
       </nav>
-      <WeekQuery week={isCurrent ? undefined : week}>
+      <WeekQuery week={isCurrent ? undefined : (scheduleWeekQueryDate(week) ?? undefined)}>
         {(schedule) => {
           const days = groupByDay(schedule.lessons);
           if (days.length === 0) {

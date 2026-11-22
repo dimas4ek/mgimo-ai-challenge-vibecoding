@@ -114,6 +114,43 @@ describe("SchedulePage", () => {
     server.events.removeAllListeners();
   });
 
+  it.each(["2026-13-01", "2026-02-30", "1999-12-31", "2100-01-01", ""])(
+    "неверная дата %j открывает текущую неделю и удаляется из адреса",
+    async (week) => {
+      at("2026-11-17", "10:00");
+      const router = renderAt(`/schedule?week=${week}&source=notification`);
+      await screen.findByRole("heading", { name: "Понедельник, 16 ноября" });
+      expect(screen.getByText("Текущая неделя")).toBeTruthy();
+      const params = new URLSearchParams(router.state.location.search);
+      expect(params.get("view")).toBe("week");
+      expect(params.has("week")).toBe(false);
+      expect(params.get("source")).toBe("notification");
+      expect(router.state.historyAction).toBe("REPLACE");
+    },
+  );
+
+  it("запрашивает первую доступную неделю по дате внутри диапазона", async () => {
+    at("2026-11-17", "10:00");
+    let requestedWeek: string | null = null;
+    server.use(
+      http.get(routes.me.schedule.path, ({ request }) => {
+        requestedWeek = new URL(request.url).searchParams.get("week");
+        return HttpResponse.json({
+          weekStart: "1999-12-27",
+          weekEnd: "2000-01-02",
+          lessons: [],
+        } satisfies WeekSchedule);
+      }),
+    );
+    renderAt("/schedule?week=2000-01-01");
+    await screen.findByText("На этой неделе пар нет");
+    expect(requestedWeek).toBe("2000-01-02");
+    expect(screen.getByRole("button", { name: "Предыдущая неделя" })).toHaveProperty(
+      "disabled",
+      true,
+    );
+  });
+
   it("листание: «Следующая неделя» меняет адрес", async () => {
     at("2026-11-17", "10:00");
     const router = renderAt("/schedule?view=week");
