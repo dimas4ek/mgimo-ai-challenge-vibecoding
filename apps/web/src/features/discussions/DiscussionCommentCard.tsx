@@ -20,7 +20,9 @@ export function DiscussionCommentCard({
         <DiscussionByline author={comment.author.displayName} createdAt={comment.createdAt} />
         {actions}
       </div>
-      <p className="wrap-anywhere whitespace-pre-wrap">{comment.body}</p>
+      <p className="wrap-anywhere whitespace-pre-wrap">
+        {comment.body ?? "Комментарий скрыт модератором."}
+      </p>
     </Card>
   );
 }

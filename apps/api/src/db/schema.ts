@@ -62,6 +62,11 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "schedule_change",
   "request",
 ]);
+export const discussionReportStatusEnum = pgEnum("discussion_report_status", [
+  "pending",
+  "hidden",
+  "dismissed",
+]);
 
 /** Учётная запись: студент или сотрудник деканата. */
 export const users = pgTable("users", {
@@ -157,9 +162,32 @@ export const discussionComments = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     body: text("body").notNull(),
+    hiddenAt: timestamp("hidden_at", { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [index("discussion_comments_topic_date_idx").on(t.topicId, t.createdAt)],
+);
+
+export const discussionReports = pgTable(
+  "discussion_reports",
+  {
+    id: id(),
+    commentId: uuid("comment_id")
+      .notNull()
+      .references(() => discussionComments.id, { onDelete: "cascade" }),
+    reporterId: uuid("reporter_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    reason: text("reason").notNull(),
+    status: discussionReportStatusEnum("status").notNull().default("pending"),
+    createdAt: createdAt(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    resolvedBy: uuid("resolved_by").references(() => users.id, { onDelete: "set null" }),
+  },
+  (t) => [
+    uniqueIndex("discussion_reports_comment_reporter_idx").on(t.commentId, t.reporterId),
+    index("discussion_reports_queue_idx").on(t.status, t.createdAt),
+  ],
 );
 
 export const teachers = pgTable("teachers", {

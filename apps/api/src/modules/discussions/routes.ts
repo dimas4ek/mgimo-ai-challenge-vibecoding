@@ -4,10 +4,11 @@ import { requireAuth, requireRole } from "../../auth/middleware";
 import type { AppEnv } from "../../env";
 import { apiError } from "../../http/errors";
 import { validate } from "../../http/validate";
+import { createDiscussionReport } from "../discussion-reports/service";
 import { addDiscussionComment, createDiscussion, getDiscussion, listDiscussions } from "./service";
 
 export function discussionRoutes() {
-  const { list, create, get, comment } = routes.me.discussions;
+  const { list, create, get, comment, report } = routes.me.discussions;
   return new Hono<AppEnv>()
     .use(list.path, requireAuth, requireRole("student"))
     .use(`${list.path}/*`, requireAuth, requireRole("student"))
@@ -39,5 +40,21 @@ export function discussionRoutes() {
           )
         : null;
       return result ? c.json(result, 201) : apiError(c, 404, "not_found", "Тема не найдена");
+    })
+    .post(report.path, validate("json", report.body), async (c) => {
+      const commentId = IdSchema.safeParse(c.req.param("commentId"));
+      const result = commentId.success
+        ? await createDiscussionReport(
+            c.var.db,
+            c.var.user,
+            commentId.data,
+            c.req.valid("json"),
+            c.var.now(),
+          )
+        : { kind: "not_found" as const };
+      if (result.kind === "created") return c.json(result.receipt, 201);
+      if (result.kind === "duplicate")
+        return apiError(c, 409, "duplicate_report", "Жалоба уже отправлена");
+      return apiError(c, 404, "not_found", "Комментарий не найден");
     });
 }

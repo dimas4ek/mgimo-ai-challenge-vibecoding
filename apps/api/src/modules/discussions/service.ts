@@ -50,16 +50,19 @@ function topicSummary(
 }
 
 function commentDto(
-  row: Pick<typeof discussionComments.$inferSelect, "id" | "body" | "createdAt"> & {
+  row: Pick<typeof discussionComments.$inferSelect, "id" | "createdAt"> & {
+    body: string | null;
     displayName: string;
   },
 ): DiscussionComment {
-  return {
+  const fields = {
     id: row.id,
-    body: row.body,
     author: { displayName: row.displayName },
     createdAt: row.createdAt.toISOString(),
   };
+  return row.body === null
+    ? { ...fields, visibility: "hidden", body: null }
+    : { ...fields, visibility: "visible", body: row.body };
 }
 
 export async function listDiscussions(db: Db, studentId: string | null, scope: DiscussionScope) {
@@ -91,7 +94,9 @@ export async function getDiscussion(
   const comments = await db
     .select({
       id: discussionComments.id,
-      body: discussionComments.body,
+      body: sql<
+        string | null
+      >`case when ${discussionComments.hiddenAt} is null then ${discussionComments.body} end`,
       createdAt: discussionComments.createdAt,
       displayName: users.displayName,
     })
