@@ -1,6 +1,7 @@
 export * from "./auth";
 export * from "./certificates";
 export * from "./common";
+export * from "./discussion-reports";
 export * from "./discussions";
 export * from "./fixtures";
 export * from "./grades";
