@@ -26,6 +26,7 @@ describe("routes", () => {
         "auth.logout",
         "auth.me",
         "me.profile",
+        "me.group",
         "me.schedule",
         "me.grades",
         "me.curriculum",

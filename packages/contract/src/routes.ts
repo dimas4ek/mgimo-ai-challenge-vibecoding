@@ -18,6 +18,7 @@ import {
   DiscussionTopicSummarySchema,
 } from "./discussions";
 import { CurriculumSchema, GradesSchema } from "./grades";
+import { MyGroupSchema } from "./group";
 import { HealthSchema } from "./health";
 import { NotificationListSchema, NotificationSchema } from "./notifications";
 import { ProfileSchema } from "./profile";
@@ -52,6 +53,7 @@ export const routes = {
 
   me: {
     profile: { method: "GET", path: "/api/me/profile", response: ProfileSchema },
+    group: { method: "GET", path: "/api/me/group", response: MyGroupSchema },
     schedule: {
       method: "GET",
       path: "/api/me/schedule",

@@ -5,6 +5,7 @@ export * from "./discussion-reports";
 export * from "./discussions";
 export * from "./fixtures";
 export * from "./grades";
+export * from "./group";
 export * from "./health";
 export * from "./notifications";
 export * from "./profile";
