@@ -12,6 +12,7 @@ import {
   type StaffRequestItem,
 } from "@aihs/contract";
 import { type HttpHandler, HttpResponse, http } from "msw";
+import { mockStudent2Curriculum, mockStudentCurriculum } from "./curriculum";
 import { mockDiscussions } from "./discussions";
 
 /**
@@ -100,6 +101,14 @@ export const handlers: HttpHandler[] = [
     () => requireStudent() ?? HttpResponse.json(fixtures.weekSchedule),
   ),
   http.get(routes.me.grades.path, () => requireStudent() ?? HttpResponse.json(fixtures.grades)),
+  http.get(
+    routes.me.curriculum.path,
+    () =>
+      requireStudent() ??
+      HttpResponse.json(
+        db.me?.id === fixtures.me.student2.id ? mockStudent2Curriculum : mockStudentCurriculum,
+      ),
+  ),
   http.get(routes.me.certificates.get.path, ({ params }) => {
     const denied = requireStudent();
     if (denied) return denied;

@@ -44,7 +44,7 @@ function open(grades?: Grades) {
 }
 
 describe("долги прошлых сессий", () => {
-  it("блок над дисциплинами: семестр, предмет, баллы, итог и ссылка на пересдачу", async () => {
+  it("блок в обзоре: семестр, предмет, баллы, итог и ссылка на пересдачу", async () => {
     const debt = fixtures.grades.pastDebts[0];
     if (!debt) throw new Error("нет прошлого долга в фикстуре");
     open();
@@ -63,9 +63,11 @@ describe("долги прошлых сессий", () => {
       comment: debt.subject,
     });
 
-    // Блок стоит перед списком дисциплин текущего семестра.
-    const list = screen.getByRole("region", { name: "Дисциплины" });
-    expect(block.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      within(screen.getByRole("tabpanel", { name: "Обзор" })).getByRole("region", {
+        name: "Долги прошлых сессий",
+      }),
+    ).toBe(block);
 
     // Сводка объясняет, что долг прошлый; калькулятор на месте.
     expect(screen.getByText("с прошлых сессий")).toBeTruthy();

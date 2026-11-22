@@ -7,6 +7,12 @@ export const paths = {
   home: "/",
   schedule: "/schedule",
   grades: "/grades",
+  curriculum: ({ semester, subject }: { semester?: string; subject?: string } = {}) => {
+    const params = new URLSearchParams({ tab: "disciplines" });
+    if (semester) params.set("semester", semester);
+    if (subject) params.set("subject", subject);
+    return `/grades?${params}`;
+  },
   discussions: "/discussions",
   /** Шаблон для роутера; ссылку строй через `paths.discussion(id)`. */
   discussionPattern: "/discussions/:id",

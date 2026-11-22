@@ -71,6 +71,22 @@ const subjects = {
 } as const;
 type SubjectKey = keyof typeof subjects;
 
+/** Лекции и практика, в академических часах. Остаток нагрузки приходится на самостоятельную работу. */
+const classHours: Record<SubjectKey, readonly [lectures: number, practice: number]> = {
+  ml: [36, 36],
+  nlp: [28, 36],
+  ethics: [18, 18],
+  prob: [36, 36],
+  prob1: [36, 36],
+  philosophy: [18, 18],
+  cv: [28, 36],
+  calculus: [36, 54],
+  linalg: [36, 36],
+  python: [18, 36],
+  databases: [18, 36],
+  english: [0, 36],
+};
+
 interface Slot {
   day: Weekday;
   pair: Pair;
@@ -480,7 +496,7 @@ function examDate(base: string, day: number): string {
 }
 
 /** Весенний семестр предыдущего учебного года относительно текущего семестра. */
-function previousSemester(
+export function previousSemester(
   current: Insert<typeof schema.semesters>,
 ): Insert<typeof schema.semesters> {
   // Текущий учебный год 2026/27 (осень или весна) → прошлый весенний семестр 2025/26, сессия в июне 2026.
@@ -493,6 +509,32 @@ function previousSemester(
     sessionEnd: `${year}-06-30`,
     isCurrent: false,
   };
+}
+
+/** Демо-планы двух групп. Общие для группы сведения берём из тех же шаблонов, что и демооценки. */
+export function buildCurriculum(
+  currentId: string,
+  pastId?: string,
+): Insert<typeof schema.curriculum>[] {
+  return students.flatMap(({ group, user }) =>
+    [
+      ...grades[user].map((grade) => ({ grade, semesterId: currentId })),
+      ...(pastId ? pastGrades[user].map((grade) => ({ grade, semesterId: pastId })) : []),
+    ].map(({ grade, semesterId }) => {
+      const [lectureHours, practiceHours] = classHours[grade.subject];
+      return {
+        groupId: seedId(`group:${group}`),
+        semesterId,
+        subjectId: seedId(`subject:${grade.subject}`),
+        teacherId: seedId(`teacher:${grade.teacher}`),
+        controlForm: grade.controlForm,
+        credits: grade.credits,
+        lectureHours,
+        practiceHours,
+        independentHours: grade.credits * 36 - lectureHours - practiceHours,
+      };
+    }),
+  );
 }
 
 /** Текущий семестр по московской дате: сентябрь–январь — осенний, февраль–август — весенний. */

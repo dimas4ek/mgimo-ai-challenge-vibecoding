@@ -1,8 +1,8 @@
 import { hash } from "@node-rs/argon2";
-import { inArray, notInArray } from "drizzle-orm";
+import { eq, inArray, notInArray } from "drizzle-orm";
 import type { Db } from "../client";
 import * as schema from "../schema";
-import { buildSeedData } from "./data";
+import { buildCurriculum, buildSeedData, previousSemester } from "./data";
 import { seedDiscussions } from "./discussions";
 import { setSeededAt, withSeedLock } from "./seeded-at";
 
@@ -83,6 +83,7 @@ export async function seed(db: Db, options: SeedOptions): Promise<void> {
     await tx.insert(schema.lessonChanges).values(data.lessonChanges);
     await tx.insert(schema.semesters).values(data.semesters);
     await tx.insert(schema.grades).values(data.grades);
+    await seedCurriculum(tx);
     await tx.insert(schema.requests).values(data.requests);
     await tx.insert(schema.requestHistory).values(data.requestHistory);
     await tx.insert(schema.notifications).values(data.notifications);
@@ -90,4 +91,24 @@ export async function seed(db: Db, options: SeedOptions): Promise<void> {
     // От этого момента построено расписание: сброс демо-данных строит заявки и уведомления от него же.
     await setSeededAt(tx, options.now);
   });
+}
+
+/** Заполняет план и в уже работающей демобазе, сохраняя заявки и личные оценки. */
+export async function seedCurriculum(db: Db): Promise<void> {
+  const [current] = await db
+    .select()
+    .from(schema.semesters)
+    .where(eq(schema.semesters.isCurrent, true));
+  if (!current) return;
+  const pastId = previousSemester(current).id;
+  const [past] = pastId
+    ? await db
+        .select({ id: schema.semesters.id })
+        .from(schema.semesters)
+        .where(eq(schema.semesters.id, pastId))
+    : [];
+  await db
+    .insert(schema.curriculum)
+    .values(buildCurriculum(current.id, past?.id))
+    .onConflictDoNothing();
 }

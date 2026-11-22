@@ -57,6 +57,13 @@
       "when": 1795366165270,
       "tag": "0007_wide_wolverine",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795368018660,
+      "tag": "0008_flaky_magdalene",
+      "breakpoints": true
     }
   ]
 }

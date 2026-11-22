@@ -7,6 +7,8 @@ import {
   Repeat,
   UserRound,
 } from "lucide-react";
+import { Link } from "react-router";
+import { paths } from "../../app/paths";
 import { cn } from "../../lib/cn";
 import { Badge, type BadgeTone } from "../../ui";
 import { formatDayTitle, lessonChangeLabel, lessonTypeLabel } from "./model";
@@ -68,7 +70,16 @@ export function LessonCard({ lesson, ongoing = false, showDate = false }: Lesson
             cancelled && "text-muted-foreground line-through",
           )}
         >
-          {lesson.subject}
+          {lesson.subjectId ? (
+            <Link
+              to={paths.curriculum({ subject: lesson.subjectId })}
+              className="inline-flex min-h-11 items-center rounded-sm text-primary underline underline-offset-4"
+            >
+              {lesson.subject}
+            </Link>
+          ) : (
+            lesson.subject
+          )}
         </h3>
         <p className="text-sm text-muted-foreground">{lessonTypeLabel[lesson.type]}</p>
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
