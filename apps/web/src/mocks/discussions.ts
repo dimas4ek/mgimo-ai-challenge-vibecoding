@@ -21,7 +21,18 @@ function examples(): Entry[] {
       body: "Предложите тему для следующей встречи.",
       author: { displayName: author.displayName },
       createdAt: timestamp,
-      comments: [],
+      comments:
+        index === 0
+          ? [
+              {
+                id: "5e785af4-e7a5-4e3a-aeb4-2539b9c07b10",
+                body: "Можем показать, как визуализируем расписание.",
+                author: { displayName: fixtures.me.student2.displayName },
+                createdAt: timestamp,
+                visibility: "visible",
+              },
+            ]
+          : [],
     },
   }));
 }
@@ -33,18 +44,19 @@ const notFound = () => error(404, "not_found", "Тема не найдена");
 
 export function mockDiscussions(readMe: () => Me | null) {
   let topics = examples();
+  const reports = new Set<string>();
   const reset = () => {
     topics = examples();
+    reports.clear();
   };
   const accessError = (me: Me | null) =>
     me
       ? error(403, "forbidden", "Только для студентов")
       : error(401, "unauthorized", "Нужно войти");
+  const canRead = ({ departmentOwner }: Entry, userId: string) =>
+    departmentOwner === null || departmentOwner === userId;
   const find = (id: unknown, userId: string) =>
-    topics.find(
-      ({ topic, departmentOwner }) =>
-        topic.id === id && (departmentOwner === null || departmentOwner === userId),
-    )?.topic;
+    topics.find((entry) => entry.topic.id === id && canRead(entry, userId))?.topic;
 
   const handlers = [
     http.get(endpoint.list.path, ({ request }) => {
@@ -99,6 +111,26 @@ export function mockDiscussions(readMe: () => Me | null) {
       };
       topic.comments.push(comment);
       return HttpResponse.json(comment, { status: 201 });
+    }),
+    http.post(endpoint.report.path, async ({ request, params }) => {
+      const me = readMe();
+      if (me?.role !== "student") return accessError(me);
+      const input = endpoint.report.body.safeParse(await request.json().catch(() => null));
+      if (!input.success) return invalid();
+      const comment = topics
+        .filter((entry) => canRead(entry, me.id))
+        .flatMap(({ topic }) => topic.comments)
+        .find((item) => item.id === params.commentId && item.visibility !== "hidden");
+      if (!comment) return error(404, "not_found", "Комментарий не найден");
+      const key = `${me.id}:${comment.id}`;
+      if (reports.has(key)) return error(409, "duplicate_report", "Жалоба уже отправлена");
+      reports.add(key);
+      const receipt = endpoint.report.response.parse({
+        id: crypto.randomUUID(),
+        status: "pending",
+        createdAt: new Date().toISOString(),
+      });
+      return HttpResponse.json(receipt, { status: 201 });
     }),
   ];
 

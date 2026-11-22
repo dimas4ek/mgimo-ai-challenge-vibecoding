@@ -80,3 +80,52 @@ it("показывает недоступность темы другой каф
   expect(await screen.findByText("Тема недоступна")).toBeTruthy();
   expect(screen.queryByLabelText("Ответ")).toBeNull();
 });
+
+it("валидирует жалобу, сохраняет причину при сбое и подтверждает повторную отправку", async () => {
+  const prototype = HTMLDialogElement.prototype;
+  const original = Object.getOwnPropertyDescriptor(prototype, "showModal");
+  Object.defineProperty(prototype, "showModal", {
+    configurable: true,
+    value(this: HTMLDialogElement) {
+      this.open = true;
+    },
+  });
+  try {
+    const seen: unknown[] = [];
+    server.use(
+      http.post(routes.me.discussions.report.path, async ({ request, params }) => {
+        seen.push({ commentId: params.commentId, input: await request.json() });
+        return seen.length === 1
+          ? HttpResponse.json({ error: { code: "internal", message: "Ошибка" } }, { status: 503 })
+          : HttpResponse.json(
+              { error: { code: "duplicate_report", message: "Уже отправлена" } },
+              { status: 409 },
+            );
+      }),
+    );
+    open(paths.discussion("5e785af4-e7a5-4e3a-aeb4-2539b9c07b00"));
+    fireEvent.click(await screen.findByRole("button", { name: "Действия с комментарием" }));
+    fireEvent.click(screen.getByRole("button", { name: "Пожаловаться" }));
+    const submit = screen.getByRole("button", { name: "Отправить жалобу" });
+    fireEvent.click(submit);
+    expect(screen.getByText("Укажите причину жалобы.")).toBeTruthy();
+    expect(seen).toHaveLength(0);
+
+    const input = screen.getByRole("textbox", { name: "Причина жалобы" }) as HTMLTextAreaElement;
+    fireEvent.change(input, { target: { value: "  Проверьте этот текст.  " } });
+    fireEvent.click(submit);
+    expect(await screen.findByText(/На сервере что-то пошло не так/)).toBeTruthy();
+    expect(input.value).toBe("  Проверьте этот текст.  ");
+    fireEvent.click(submit);
+    expect(await screen.findByText("Вы уже отправили жалобу на этот комментарий.")).toBeTruthy();
+    expect(seen).toEqual(
+      Array.from({ length: 2 }, () => ({
+        commentId: "5e785af4-e7a5-4e3a-aeb4-2539b9c07b10",
+        input: { reason: "Проверьте этот текст." },
+      })),
+    );
+  } finally {
+    if (original) Object.defineProperty(prototype, "showModal", original);
+    else Reflect.deleteProperty(prototype, "showModal");
+  }
+});

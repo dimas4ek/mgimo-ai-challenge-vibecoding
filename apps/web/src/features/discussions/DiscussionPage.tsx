@@ -15,6 +15,7 @@ import {
   PageHeader,
   Textarea,
 } from "../../ui";
+import { CommentReportAction } from "./CommentReportAction";
 import { DiscussionByline } from "./DiscussionByline";
 import { DiscussionCommentCard } from "./DiscussionCommentCard";
 import { useAddDiscussionComment, useDiscussion } from "./queries";
@@ -110,7 +111,14 @@ export function DiscussionPage() {
           <ul className="flex flex-col gap-3">
             {topic.comments.map((comment) => (
               <li key={comment.id}>
-                <DiscussionCommentCard comment={comment} />
+                <DiscussionCommentCard
+                  comment={comment}
+                  actions={
+                    comment.visibility !== "hidden" && (
+                      <CommentReportAction commentId={comment.id} />
+                    )
+                  }
+                />
               </li>
             ))}
           </ul>
