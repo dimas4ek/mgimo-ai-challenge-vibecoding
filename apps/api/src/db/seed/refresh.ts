@@ -20,13 +20,10 @@ export async function refreshWeeklySchedule(db: Db, now: Date): Promise<boolean>
   return withSeedLock(db, async (tx) => {
     const metadata = await getSeedMetadata(tx);
     const currentWeek = weekOf(now);
-    if (metadata) {
-      const seededWeek = weekOf(metadata.seededAt);
-      if (seededWeek > currentWeek) return false;
-      if (seededWeek === currentWeek && metadata.scheduleVersion >= DEMO_SCHEDULE_VERSION) {
-        return false;
-      }
-    }
+    const seededWeek = metadata ? weekOf(metadata.seededAt) : null;
+    const sameWeek = seededWeek === currentWeek;
+    if (seededWeek && seededWeek > currentWeek) return false;
+    if (sameWeek && metadata && metadata.scheduleVersion >= DEMO_SCHEDULE_VERSION) return false;
 
     const data = buildSeedData(now, seedAccounts);
     const userIds = data.users.map((user) => user.id);
@@ -53,17 +50,25 @@ export async function refreshWeeklySchedule(db: Db, now: Date): Promise<boolean>
     await tx.insert(schema.lessons).values(data.lessons);
     await tx.insert(schema.lessonChanges).values(data.lessonChanges);
 
-    await tx
+    const previousNotifications = await tx
       .delete(schema.notifications)
       .where(
         and(
           eq(schema.notifications.type, "schedule_change"),
           inArray(schema.notifications.userId, userIds),
         ),
+      )
+      .returning({ id: schema.notifications.id, read: schema.notifications.read });
+    // У уведомлений идентификаторы зависят от относительной недели и переиспользуются после понедельника.
+    const readIds = new Set(
+      sameWeek ? previousNotifications.filter((notice) => notice.read).map(({ id }) => id) : [],
+    );
+    const notifications = data.notifications
+      .filter((notification) => notification.type === "schedule_change")
+      .map((notification) =>
+        readIds.has(notification.id ?? "") ? { ...notification, read: true } : notification,
       );
-    await tx
-      .insert(schema.notifications)
-      .values(data.notifications.filter((notification) => notification.type === "schedule_change"));
+    await tx.insert(schema.notifications).values(notifications);
     await setSeededAt(tx, now);
     return true;
   });
