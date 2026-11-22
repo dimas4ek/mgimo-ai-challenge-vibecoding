@@ -1,7 +1,7 @@
 import { serve } from "@hono/node-server";
 import { createApp } from "./app";
 import { createDbFromEnv } from "./db/client";
-import { seedCurriculum, seedGroupDetails } from "./db/seed";
+import { seedCourseworkDeadline, seedCurriculum, seedGroupDetails } from "./db/seed";
 import { seedDiscussions } from "./db/seed/discussions";
 import { refreshSafely, startDemoDataRefresh } from "./db/seed/refresh";
 import { withSeedLock } from "./db/seed/seeded-at";
@@ -18,6 +18,7 @@ await withSeedLock(handle.db, async (tx) => {
   await seedDiscussions(tx, new Date());
   await seedCurriculum(tx);
   await seedGroupDetails(tx);
+  await seedCourseworkDeadline(tx);
 });
 startDemoDataRefresh(handle.db);
 

@@ -10,7 +10,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../../app";
 import { createDb, type DbHandle } from "../../db/client";
 import * as schema from "../../db/schema";
-import { seed, seedAccounts } from "../../db/seed";
+import { seed, seedAccounts, seedCourseworkDeadline } from "../../db/seed";
+import { demoCourseworkDeadline, seedId } from "../../db/seed/data";
 import { notify } from "./service";
 
 const NOW = new Date("2026-11-19T09:00:00Z");
@@ -63,6 +64,20 @@ const read = (who: keyof typeof cookies | null, id: string) =>
     buildPath(routes.me.notifications.markRead.path, { id }),
     as(who, { method: "POST" }),
   );
+
+it("обновляет срок демодедлайна без изменения публикации и отметки прочтения", async () => {
+  const id = seedId(`notification:${demoCourseworkDeadline.key}`);
+  const before = (await feed("student")).items.find((item) => item.id === id);
+  expect(before?.dueDate).toBe("2026-11-30");
+  await handle.db
+    .update(schema.notifications)
+    .set({ dueDate: null, title: "До 30.11 сдать курсовую по машинному обучению" })
+    .where(eq(schema.notifications.id, id));
+  const legacy = (await feed("student")).items.find((item) => item.id === id);
+  expect(legacy).not.toHaveProperty("dueDate");
+  await seedCourseworkDeadline(handle.db);
+  expect((await feed("student")).items.find((item) => item.id === id)).toEqual(before);
+});
 
 describe("notify", () => {
   it("пишет уведомление пользователю студента; студента нет → null", async () => {

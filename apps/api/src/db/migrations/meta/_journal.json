@@ -71,6 +71,13 @@
       "when": 1795373266045,
       "tag": "0009_living_slyde",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795373958911,
+      "tag": "0010_square_cassandra_nova",
+      "breakpoints": true
     }
   ]
 }

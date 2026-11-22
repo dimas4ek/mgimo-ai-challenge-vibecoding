@@ -333,7 +333,8 @@ const notifications: NotificationList = {
     {
       id: "3e4f5a6b-7c8d-4e9f-8a0b-1c2d3e4f5a03",
       type: "deadline",
-      title: "До 1 декабря сдать курсовую по ML",
+      title: "Сдать курсовую по ML",
+      dueDate: "2026-11-30",
       body: "Загрузите отчёт и код в систему курсовых работ.",
       createdAt: "2026-11-10T09:00:00.000Z",
       read: true,

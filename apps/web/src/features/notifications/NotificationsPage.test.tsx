@@ -118,6 +118,30 @@ describe("NotificationsPage", () => {
     );
   });
 
+  it("фильтр дедлайнов из адреса сохраняет старые уведомления без срока", async () => {
+    const legacy = {
+      ...fixtures.notifications.items[2],
+      id: crypto.randomUUID(),
+      title: "Старый дедлайн без срока",
+      dueDate: undefined,
+    };
+    server.use(
+      http.get(routes.me.notifications.list.path, () =>
+        HttpResponse.json({
+          items: [...fixtures.notifications.items, legacy],
+          unreadCount: 2,
+        }),
+      ),
+    );
+    renderAt(paths.notificationDeadlines);
+    expect(await screen.findByText("до 30 ноября")).toBeTruthy();
+    expect(screen.getByText("Старый дедлайн без срока")).toBeTruthy();
+    expect(screen.queryByText("Хакатон AI High School")).toBeNull();
+    expect(screen.getByRole("tab", { name: "Дедлайны" }).getAttribute("aria-selected")).toBe(
+      "true",
+    );
+  });
+
   it("уведомление без ссылки отмечается кнопкой «Отметить прочитанным»", async () => {
     server.use(
       http.get(routes.me.notifications.list.path, () =>

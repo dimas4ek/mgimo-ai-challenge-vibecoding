@@ -374,6 +374,7 @@ export const notifications = pgTable(
     type: notificationTypeEnum("type").notNull(),
     title: text("title").notNull(),
     body: text("body").notNull(),
+    dueDate: date("due_date"),
     /** Путь внутри приложения (`/requests/<id>`) или `null`. */
     link: text("link"),
     read: boolean("read").notNull().default(false),

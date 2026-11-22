@@ -30,9 +30,19 @@ function pick(items: readonly Notification[], type: NotificationType): Notificat
     .slice(0, HOME_LIMIT);
 }
 
-/** Дедлайны (`type: "deadline"`): непрочитанные сверху, затем новые; не больше `HOME_LIMIT`. */
-export function homeDeadlines(items: readonly Notification[]): Notification[] {
-  return pick(items, "deadline");
+/** Ближайшие сроки, включая сегодня по Москве. Старые уведомления без срока остаются в ленте. */
+export function homeDeadlines(
+  items: readonly Notification[],
+  now: Date,
+): (Notification & { dueDate: string })[] {
+  const today = moscowToday(now);
+  return items
+    .filter(
+      (n): n is Notification & { dueDate: string } =>
+        n.type === "deadline" && n.dueDate !== undefined && n.dueDate >= today,
+    )
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.id.localeCompare(b.id))
+    .slice(0, HOME_LIMIT);
 }
 
 /** Объявления деканата (`type: "news"`): непрочитанные сверху, затем новые; не больше `HOME_LIMIT`. */

@@ -36,6 +36,12 @@ export function usesAlternateTimetable(weekMonday: string): boolean {
 }
 
 const ddmm = (isoDate: string) => `${isoDate.slice(8, 10)}.${isoDate.slice(5, 7)}`;
+
+export const demoCourseworkDeadline = {
+  key: "s1-coursework",
+  title: "Сдать курсовую по машинному обучению",
+  dueDate: "2026-11-30",
+};
 const hoursBefore = (now: Date, hours: number) => new Date(now.getTime() - hours * 3_600_000);
 
 const faculties = {
@@ -858,10 +864,9 @@ export function buildSeedData(
       hoursAgo: 12,
     },
     {
-      key: "s1-coursework",
+      ...demoCourseworkDeadline,
       user: "student",
       type: "deadline",
-      title: `До ${ddmm(addDays(monday, 14))} сдать курсовую по машинному обучению`,
       body: "Загрузите отчёт и код в систему курсовых работ.",
       link: null,
       read: true,
