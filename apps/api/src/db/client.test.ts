@@ -27,6 +27,7 @@ describe("createDb (PGlite в памяти)", () => {
       "certificates",
       "departments",
       "discussion_comments",
+      "discussion_reports",
       "discussion_topics",
       "faculties",
       "grades",
