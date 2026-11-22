@@ -2,6 +2,14 @@ import { z } from "zod";
 import { LoginInputSchema, MeSchema } from "./auth";
 import { CertificateSchema, CertificateVerificationSchema } from "./certificates";
 import { OkSchema } from "./common";
+import {
+  CreateDiscussionCommentInputSchema,
+  CreateDiscussionInputSchema,
+  DiscussionCommentSchema,
+  DiscussionListQuerySchema,
+  DiscussionTopicSchema,
+  DiscussionTopicSummarySchema,
+} from "./discussions";
 import { GradesSchema } from "./grades";
 import { HealthSchema } from "./health";
 import { NotificationListSchema, NotificationSchema } from "./notifications";
@@ -69,6 +77,27 @@ export const routes = {
         method: "GET",
         path: "/api/me/certificates/:requestId",
         response: CertificateSchema,
+      },
+    },
+    discussions: {
+      list: {
+        method: "GET",
+        path: "/api/me/discussions",
+        query: DiscussionListQuerySchema,
+        response: z.array(DiscussionTopicSummarySchema),
+      },
+      create: {
+        method: "POST",
+        path: "/api/me/discussions",
+        body: CreateDiscussionInputSchema,
+        response: DiscussionTopicSchema,
+      },
+      get: { method: "GET", path: "/api/me/discussions/:id", response: DiscussionTopicSchema },
+      comment: {
+        method: "POST",
+        path: "/api/me/discussions/:id/comments",
+        body: CreateDiscussionCommentInputSchema,
+        response: DiscussionCommentSchema,
       },
     },
   },
