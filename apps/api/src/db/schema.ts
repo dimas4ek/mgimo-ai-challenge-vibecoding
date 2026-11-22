@@ -293,4 +293,5 @@ export const notifications = pgTable(
 export const seedMeta = pgTable("seed_meta", {
   id: integer("id").primaryKey(),
   seededAt: timestamp("seeded_at", { withTimezone: true }).notNull(),
+  scheduleVersion: integer("schedule_version").notNull().default(1),
 });

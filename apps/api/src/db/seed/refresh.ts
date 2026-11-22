@@ -4,7 +4,7 @@ import type { Db } from "../client";
 import * as schema from "../schema";
 import { buildSeedData } from "./data";
 import { seed, seedAccounts } from "./index";
-import { getSeededAt, setSeededAt, withSeedLock } from "./seeded-at";
+import { DEMO_SCHEDULE_VERSION, getSeedMetadata, setSeededAt, withSeedLock } from "./seeded-at";
 
 /** Раз в час проверяем, не началась ли новая неделя по Москве. */
 export const REFRESH_INTERVAL_MS = 60 * 60 * 1000;
@@ -12,18 +12,25 @@ export const REFRESH_INTERVAL_MS = 60 * 60 * 1000;
 const weekOf = (at: Date) => mondayOf(moscowDate(at));
 
 /**
- * Обновляет расписание и уведомления об изменениях при смене недели по Москве.
+ * Обновляет расписание и уведомления при смене недели по Москве или версии шаблонов.
  * Сохраняет заявки, их историю, выданные справки и уведомления по заявкам.
  * На пустой базе создаёт исходные демо-данные. Возвращает `true`, если данные обновились.
  */
 export async function refreshWeeklySchedule(db: Db, now: Date): Promise<boolean> {
   return withSeedLock(db, async (tx) => {
-    const seededAt = await getSeededAt(tx);
-    if (seededAt && weekOf(seededAt) >= weekOf(now)) return false;
+    const metadata = await getSeedMetadata(tx);
+    const currentWeek = weekOf(now);
+    if (metadata) {
+      const seededWeek = weekOf(metadata.seededAt);
+      if (seededWeek > currentWeek) return false;
+      if (seededWeek === currentWeek && metadata.scheduleVersion >= DEMO_SCHEDULE_VERSION) {
+        return false;
+      }
+    }
 
     const data = buildSeedData(now, seedAccounts);
     const userIds = data.users.map((user) => user.id);
-    if (!seededAt) {
+    if (!metadata) {
       // У старой базы может не быть отметки, хотя демо-аккаунты уже существуют.
       const [existing] = await tx
         .select({ id: schema.users.id })

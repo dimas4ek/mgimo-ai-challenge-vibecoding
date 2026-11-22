@@ -84,6 +84,29 @@ describe("refreshDemoDataIfStale", () => {
     expect(await getSeededAt(handle.db)).toEqual(SEEDED);
   });
 
+  it("при смене версии расписание обновляется в ту же неделю и сохраняет заявку", {
+    timeout: 60_000,
+  }, async () => {
+    await seed(handle.db, { now: SEEDED });
+    const { id, groupId } = await student();
+    const [created] = await handle.db
+      .insert(schema.requests)
+      .values({ studentId: id, type: "transcript", createdAt: SEEDED, updatedAt: SEEDED })
+      .returning();
+    await handle.db.update(schema.seedMeta).set({ scheduleVersion: 1 });
+    await handle.db.delete(schema.lessons).where(eq(schema.lessons.groupId, groupId));
+
+    expect(await refreshDemoDataIfStale(handle.db, SAME_WEEK)).toBe(true);
+    expect(await getSeededAt(handle.db)).toEqual(SAME_WEEK);
+    expect(await refreshDemoDataIfStale(handle.db, SAME_WEEK)).toBe(false);
+    expect(await changesInWeekOf(groupId, SAME_WEEK)).toHaveLength(3);
+    const [still] = await handle.db
+      .select()
+      .from(schema.requests)
+      .where(eq(schema.requests.id, created?.id ?? ""));
+    expect(still).toEqual(created);
+  });
+
   it("новая неделя — в расписании снова перенос, замена и отмена, уведомления совпадают", {
     timeout: 60_000,
   }, async () => {

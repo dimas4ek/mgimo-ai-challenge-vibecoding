@@ -29,8 +29,10 @@ type Weekday = 1 | 2 | 3 | 4 | 5 | 6;
 const WEEKS = [-2, -1, 0, 1, 2, 3, 4];
 
 /** Выбирает альтернативный шаблон по понедельнику недели (дата в МСК, YYYY-MM-DD). */
-export function usesAlternateTimetable(_weekMonday: string): boolean {
-  throw new Error("not implemented");
+export function usesAlternateTimetable(weekMonday: string): boolean {
+  // Считаем целые недели от фиксированного понедельника, включая переход через Новый год.
+  const elapsed = Date.parse(`${weekMonday}T00:00:00Z`) - Date.UTC(1970, 0, 5);
+  return (elapsed / (7 * 24 * 60 * 60 * 1000)) % 2 !== 0;
 }
 
 const ddmm = (isoDate: string) => `${isoDate.slice(8, 10)}.${isoDate.slice(5, 7)}`;
@@ -72,6 +74,7 @@ type SubjectKey = keyof typeof subjects;
 interface Slot {
   day: Weekday;
   pair: Pair;
+  alternate?: { day: Weekday; pair: Pair };
   subject: SubjectKey;
   teacher: TeacherKey;
   type: Insert<typeof schema.lessons>["type"];
@@ -110,12 +113,21 @@ const groups = {
       {
         day: 1,
         pair: 2,
+        alternate: { day: 1, pair: 3 },
         subject: "ml",
         teacher: "olkhovskaya",
         type: "lab",
         room: "Б-108 (компьютерный класс)",
       },
-      { day: 2, pair: 1, subject: "cv", teacher: "lapteva", type: "lecture", room: "А-214" },
+      {
+        day: 2,
+        pair: 1,
+        alternate: { day: 2, pair: 4 },
+        subject: "cv",
+        teacher: "lapteva",
+        type: "lecture",
+        room: "А-214",
+      },
       {
         day: 2,
         pair: 2,
@@ -182,6 +194,7 @@ const groups = {
       {
         day: 1,
         pair: 1,
+        alternate: { day: 1, pair: 2 },
         subject: "calculus",
         teacher: "sviridova",
         type: "lecture",
@@ -206,6 +219,7 @@ const groups = {
       {
         day: 2,
         pair: 3,
+        alternate: { day: 2, pair: 4 },
         subject: "python",
         teacher: "prokhorenko",
         type: "lab",
@@ -574,7 +588,9 @@ export function buildSeedData(
   for (const [groupKey, group] of Object.entries(groups) as [GroupKey, GroupDef][]) {
     for (const week of WEEKS) {
       const weekMonday = addDays(monday, 7 * week);
-      for (const slot of group.timetable) {
+      const alternate = usesAlternateTimetable(weekMonday);
+      for (const base of group.timetable) {
+        const slot = alternate ? { ...base, ...base.alternate } : base;
         const lessonId = seedId(`lesson:${groupKey}:${week}:${slot.day}:${slot.pair}`);
         const date = addDays(weekMonday, slot.day - 1);
         const ov = group.overrides.find(

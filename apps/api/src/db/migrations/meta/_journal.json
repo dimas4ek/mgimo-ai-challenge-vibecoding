@@ -36,6 +36,13 @@
       "when": 1795203390490,
       "tag": "0004_brown_changeling",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795357784693,
+      "tag": "0005_curious_hercules",
+      "breakpoints": true
     }
   ]
 }
