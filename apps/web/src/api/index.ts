@@ -12,6 +12,7 @@ export {
   useLogout,
   useMarkRead,
   useMe,
+  useMyGroup,
   useNotifications,
   useProfile,
   useRequest,

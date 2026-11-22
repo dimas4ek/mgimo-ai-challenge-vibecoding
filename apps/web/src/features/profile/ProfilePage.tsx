@@ -1,5 +1,7 @@
+import { Link } from "react-router";
 import { retryHint } from "../../api";
 import { useProfile } from "../../api/hooks";
+import { paths } from "../../app/paths";
 import { Card, CardTitle, ErrorState, PageHeader, Skeleton } from "../../ui";
 import { LogoutButton } from "../auth/LogoutButton";
 import { DemoResetCard } from "./DemoResetCard";
@@ -39,7 +41,14 @@ export function ProfilePage() {
                 .join(" ")}
             </CardTitle>
             <p className="mt-1 text-sm text-muted-foreground">
-              Группа {profile.data.group} · {profile.data.course} курс
+              Группа{" "}
+              <Link
+                className="inline-flex min-h-11 min-w-11 items-center text-primary underline underline-offset-4"
+                to={paths.group}
+              >
+                {profile.data.group}
+              </Link>{" "}
+              · {profile.data.course} курс
             </p>
           </Card>
           <Card>

@@ -1,9 +1,19 @@
 import type { Lesson, WeekSchedule } from "@aihs/contract";
 import { CalendarCheck, CalendarX, ChevronLeft, ChevronRight } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
-import { useSearchParams } from "react-router";
-import { retryHint, useSchedule } from "../../api";
-import { Badge, Button, EmptyState, ErrorState, ListSkeleton, PageHeader, Tabs } from "../../ui";
+import { Link, useSearchParams } from "react-router";
+import { retryHint, useProfile, useSchedule } from "../../api";
+import { paths } from "../../app/paths";
+import {
+  Badge,
+  Button,
+  buttonVariants,
+  EmptyState,
+  ErrorState,
+  ListSkeleton,
+  PageHeader,
+  Tabs,
+} from "../../ui";
 import { LessonCard } from "./LessonCard";
 import {
   addDays,
@@ -41,6 +51,7 @@ function useNow(): Date {
  * поэтому ссылка из уведомления о переносе (`/schedule?week=…`) открывает нужную неделю.
  */
 export function SchedulePage() {
+  const { data: profile } = useProfile();
   const [params, setParams] = useSearchParams();
   const now = useNow();
   const today = moscowToday(now);
@@ -86,7 +97,17 @@ export function SchedulePage() {
 
   return (
     <>
-      <PageHeader title="Расписание" description={formatDayTitle(today)} />
+      <PageHeader
+        title="Расписание"
+        description={formatDayTitle(today)}
+        actions={
+          profile && (
+            <Link className={buttonVariants({ variant: "outline" })} to={paths.group}>
+              Группа {profile.group}
+            </Link>
+          )
+        }
+      />
       <Tabs id="schedule" label="Период" tabs={PERIOD_TABS} value={view} onChange={show}>
         {view === "today" ? (
           <TodayView today={today} now={now} onShowWeek={() => show("week")} />

@@ -112,6 +112,7 @@ export const api = {
   },
   me: {
     profile: (signal?: AbortSignal) => call(routes.me.profile, { signal }),
+    group: (signal?: AbortSignal) => call(routes.me.group, { signal }),
     schedule: (week?: string, signal?: AbortSignal) =>
       call(routes.me.schedule, { query: { week }, signal }),
     grades: (signal?: AbortSignal) => call(routes.me.grades, { signal }),

@@ -167,6 +167,11 @@ export const routeTree: RouteObject[] = [
               import("../features/profile/ProfilePage").then((m) => ({ Component: m.ProfilePage })),
           },
           {
+            path: paths.group,
+            lazy: () =>
+              import("../features/profile/GroupPage").then((m) => ({ Component: m.GroupPage })),
+          },
+          {
             path: paths.more,
             lazy: () =>
               import("../features/more/MorePage").then((m) => ({ Component: m.MorePage })),

@@ -23,6 +23,7 @@ export const paths = {
   request: (id: string) => `/requests/${encodeURIComponent(id)}`,
   notifications: "/notifications",
   profile: "/profile",
+  group: "/group",
   /** Таб «Ещё» на телефоне: уведомления, профиль, тема, выход. */
   more: "/more",
   staff: "/staff",
@@ -39,5 +40,6 @@ export const morePaths: readonly string[] = [
   paths.more,
   paths.notifications,
   paths.profile,
+  paths.group,
   paths.discussions,
 ];
