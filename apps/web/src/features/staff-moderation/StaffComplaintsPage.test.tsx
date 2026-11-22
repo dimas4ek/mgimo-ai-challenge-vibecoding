@@ -39,7 +39,7 @@ function open(path: string) {
   return router;
 }
 
-const login = (login: "student" | "staff") =>
+const login = (login: "student" | "student2" | "staff") =>
   call(routes.auth.login, { body: { login, password: "demo" } });
 
 it.each([
@@ -83,6 +83,27 @@ it("отправляет студента на главную с прямой с
   expect(router.state.location.pathname).toBe(paths.home);
   expect(screen.queryByRole("link", { name: "Жалобы" })).toBeNull();
   expect(requests).toBe(0);
+});
+
+it("повторно открывает связанную жалобу с актуальным статусом после скрытия", async () => {
+  const submit = (reason: string) =>
+    call(routes.me.discussions.report, { body: { reason }, params: { commentId } });
+  const first = await submit("Первая жалоба");
+  await login("student2");
+  await submit("Вторая жалоба");
+  await login("staff");
+  open(paths.staffComplaint(first.id));
+  expect(await screen.findByRole("button", { name: "Скрыть комментарий" })).toBeTruthy();
+  fireEvent.click(screen.getByRole("link", { name: "К жалобам" }));
+  fireEvent.click(await screen.findByRole("link", { name: /Вторая жалоба/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "Скрыть комментарий" }));
+  expect(await screen.findByText("Комментарий скрыт")).toBeTruthy();
+  fireEvent.click(screen.getByRole("link", { name: "К жалобам" }));
+  fireEvent.click(await screen.findByRole("link", { name: /Первая жалоба/ }));
+  expect(await screen.findByRole("heading", { name: "Жалоба", level: 1 })).toBeTruthy();
+  expect(await screen.findByText("Первая жалоба")).toBeTruthy();
+  expect(screen.getByText("Комментарий скрыт")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Скрыть комментарий" })).toBeNull();
 });
 
 it("показывает ошибку очереди, повтор и пустое состояние", async () => {
