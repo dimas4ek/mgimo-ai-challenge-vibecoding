@@ -22,6 +22,7 @@ import { Button } from "../ui";
 import { Disclaimer, Logo } from "./brand";
 import { homeOf } from "./guards";
 import { morePaths, paths } from "./paths";
+import { StudentTips } from "./StudentTips";
 import { useTheme } from "./theme";
 
 export type NavItem = {
@@ -218,13 +219,22 @@ export function AppShell() {
           </div>
         </header>
 
-        <main
-          id="main"
-          tabIndex={-1}
-          className="mx-auto w-full max-w-5xl flex-1 px-4 pt-5 pb-8 sm:px-6 lg:px-8 lg:pt-8 lg:pb-10"
+        <div
+          className={cn(
+            "flex flex-1 flex-col",
+            role === "student" &&
+              "min-[90rem]:grid min-[90rem]:grid-cols-[minmax(0,64rem)_17rem] min-[90rem]:pr-8",
+          )}
         >
-          <Outlet />
-        </main>
+          <main
+            id="main"
+            tabIndex={-1}
+            className="mx-auto w-full min-w-0 max-w-5xl flex-1 px-4 pt-5 pb-8 sm:px-6 lg:px-8 lg:pt-8 lg:pb-10"
+          >
+            <Outlet />
+          </main>
+          {role === "student" && <StudentTips />}
+        </div>
 
         <footer
           className={cn(
