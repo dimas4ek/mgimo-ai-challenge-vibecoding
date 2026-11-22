@@ -28,11 +28,12 @@ type Weekday = 1 | 2 | 3 | 4 | 5 | 6;
 /** Пары строятся на недели от −2 до +4 относительно текущей. */
 const WEEKS = [-2, -1, 0, 1, 2, 3, 4];
 
-/** Выбирает альтернативный шаблон по понедельнику недели (дата в МСК, YYYY-MM-DD). */
-export function usesAlternateTimetable(weekMonday: string): boolean {
-  // Считаем целые недели от фиксированного понедельника, включая переход через Новый год.
-  const elapsed = Date.parse(`${weekMonday}T00:00:00Z`) - Date.UTC(1970, 0, 5);
-  return (elapsed / (7 * 24 * 60 * 60 * 1000)) % 2 !== 0;
+/** Чётность номера ISO-недели. Четверг определяет год недели около Нового года. */
+function timetableParity(weekMonday: string): "even" | "odd" {
+  const thursday = new Date(`${addDays(weekMonday, 3)}T00:00:00Z`);
+  const days = (thursday.getTime() - Date.UTC(thursday.getUTCFullYear(), 0, 1)) / 86_400_000;
+  const isoWeek = 1 + Math.floor(days / 7);
+  return isoWeek % 2 === 0 ? "even" : "odd";
 }
 
 const ddmm = (isoDate: string) => `${isoDate.slice(8, 10)}.${isoDate.slice(5, 7)}`;
@@ -96,7 +97,6 @@ const classHours: Record<SubjectKey, readonly [lectures: number, practice: numbe
 interface Slot {
   day: Weekday;
   pair: Pair;
-  alternate?: { day: Weekday; pair: Pair };
   subject: SubjectKey;
   teacher: TeacherKey;
   type: Insert<typeof schema.lessons>["type"];
@@ -120,7 +120,8 @@ interface GroupDef {
   faculty: keyof typeof faculties;
   program: string;
   course: number;
-  timetable: Slot[];
+  odd: Slot[];
+  even: Slot[];
   overrides: Override[];
 }
 
@@ -130,12 +131,11 @@ const groups = {
     faculty: "ai",
     program: "09.03.01 Прикладной искусственный интеллект",
     course: 3,
-    timetable: [
+    odd: [
       { day: 1, pair: 1, subject: "ml", teacher: "zaretsky", type: "lecture", room: "А-214" },
       {
         day: 1,
         pair: 2,
-        alternate: { day: 1, pair: 3 },
         subject: "ml",
         teacher: "olkhovskaya",
         type: "lab",
@@ -144,7 +144,6 @@ const groups = {
       {
         day: 2,
         pair: 1,
-        alternate: { day: 2, pair: 4 },
         subject: "cv",
         teacher: "lapteva",
         type: "lecture",
@@ -164,6 +163,40 @@ const groups = {
       { day: 4, pair: 3, subject: "prob", teacher: "zaretsky", type: "lecture", room: "А-210" },
       { day: 5, pair: 2, subject: "prob", teacher: "zaretsky", type: "seminar", room: "А-210" },
       { day: 5, pair: 3, subject: "cv", teacher: "lapteva", type: "seminar", room: "А-307" },
+      {
+        day: 6,
+        pair: 2,
+        subject: "ml",
+        teacher: "olkhovskaya",
+        type: "lab",
+        room: "Б-108 (компьютерный класс)",
+      },
+    ],
+    even: [
+      { day: 1, pair: 1, subject: "cv", teacher: "lapteva", type: "lecture", room: "А-214" },
+      { day: 1, pair: 3, subject: "nlp", teacher: "belomestnov", type: "lecture", room: "А-214" },
+      { day: 2, pair: 1, subject: "ml", teacher: "zaretsky", type: "lecture", room: "А-214" },
+      {
+        day: 2,
+        pair: 2,
+        subject: "cv",
+        teacher: "lapteva",
+        type: "lab",
+        room: "Б-110 (компьютерный класс)",
+      },
+      { day: 3, pair: 1, subject: "nlp", teacher: "belomestnov", type: "seminar", room: "А-305" },
+      {
+        day: 3,
+        pair: 4,
+        subject: "ml",
+        teacher: "olkhovskaya",
+        type: "lab",
+        room: "Б-108 (компьютерный класс)",
+      },
+      { day: 4, pair: 1, subject: "ethics", teacher: "karimova", type: "lecture", room: "А-101" },
+      { day: 4, pair: 2, subject: "prob", teacher: "zaretsky", type: "lecture", room: "А-210" },
+      { day: 5, pair: 2, subject: "prob", teacher: "zaretsky", type: "seminar", room: "А-210" },
+      { day: 5, pair: 4, subject: "cv", teacher: "lapteva", type: "seminar", room: "А-307" },
       {
         day: 6,
         pair: 2,
@@ -212,11 +245,10 @@ const groups = {
     faculty: "data",
     program: "01.03.02 Анализ данных и машинное обучение",
     course: 2,
-    timetable: [
+    odd: [
       {
         day: 1,
         pair: 1,
-        alternate: { day: 1, pair: 2 },
         subject: "calculus",
         teacher: "sviridova",
         type: "lecture",
@@ -241,7 +273,6 @@ const groups = {
       {
         day: 2,
         pair: 3,
-        alternate: { day: 2, pair: 4 },
         subject: "python",
         teacher: "prokhorenko",
         type: "lab",
@@ -266,6 +297,67 @@ const groups = {
         room: "В-201",
       },
       { day: 5, pair: 1, subject: "linalg", teacher: "sviridova", type: "lecture", room: "В-101" },
+      {
+        day: 6,
+        pair: 2,
+        subject: "python",
+        teacher: "prokhorenko",
+        type: "seminar",
+        room: "В-201",
+      },
+    ],
+    even: [
+      {
+        day: 1,
+        pair: 1,
+        subject: "databases",
+        teacher: "prokhorenko",
+        type: "lecture",
+        room: "В-201",
+      },
+      {
+        day: 1,
+        pair: 3,
+        subject: "databases",
+        teacher: "prokhorenko",
+        type: "lab",
+        room: "В-012 (компьютерный класс)",
+      },
+      { day: 2, pair: 1, subject: "linalg", teacher: "sviridova", type: "lecture", room: "В-101" },
+      {
+        day: 2,
+        pair: 3,
+        subject: "calculus",
+        teacher: "sviridova",
+        type: "lecture",
+        room: "В-101",
+      },
+      { day: 3, pair: 1, subject: "linalg", teacher: "sviridova", type: "seminar", room: "В-105" },
+      { day: 3, pair: 4, subject: "english", teacher: "vengerova", type: "seminar", room: "В-310" },
+      {
+        day: 4,
+        pair: 2,
+        subject: "calculus",
+        teacher: "sviridova",
+        type: "seminar",
+        room: "В-105",
+      },
+      {
+        day: 4,
+        pair: 4,
+        subject: "python",
+        teacher: "prokhorenko",
+        type: "lab",
+        room: "В-012 (компьютерный класс)",
+      },
+      {
+        day: 5,
+        pair: 3,
+        subject: "python",
+        teacher: "prokhorenko",
+        type: "lecture",
+        room: "В-201",
+      },
       {
         day: 6,
         pair: 2,
@@ -644,9 +736,7 @@ export function buildSeedData(
   for (const [groupKey, group] of Object.entries(groups) as [GroupKey, GroupDef][]) {
     for (const week of WEEKS) {
       const weekMonday = addDays(monday, 7 * week);
-      const alternate = usesAlternateTimetable(weekMonday);
-      for (const base of group.timetable) {
-        const slot = alternate ? { ...base, ...base.alternate } : base;
+      for (const slot of group[timetableParity(weekMonday)]) {
         const lessonId = seedId(`lesson:${groupKey}:${week}:${slot.day}:${slot.pair}`);
         const date = addDays(weekMonday, slot.day - 1);
         const ov = group.overrides.find(
