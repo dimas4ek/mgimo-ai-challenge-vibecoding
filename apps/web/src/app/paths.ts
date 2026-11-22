@@ -29,6 +29,10 @@ export const paths = {
   /** Таб «Ещё» на телефоне: уведомления, профиль, тема, выход. */
   more: "/more",
   staff: "/staff",
+  /** Очередь жалоб и её карточка подключаются только в ветке роутера сотрудника. */
+  staffComplaints: "/staff/complaints",
+  staffComplaintPattern: "/staff/complaints/:id",
+  staffComplaint: (id: string) => `/staff/complaints/${encodeURIComponent(id)}`,
   /** Справка для печати с QR (без AppShell, для печати). Наполняет #26. */
   certificatePattern: "/requests/:id/certificate",
   certificate: (requestId: string) => `/requests/${encodeURIComponent(requestId)}/certificate`,
