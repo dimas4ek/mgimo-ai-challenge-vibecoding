@@ -3,6 +3,7 @@ import {
   Bell,
   CalendarDays,
   FileText,
+  Flag,
   GraduationCap,
   House,
   Inbox,
@@ -52,12 +53,14 @@ export const secondaryNav: NavItem[] = [
   { to: paths.profile, label: "Профиль", icon: UserRound },
 ];
 
-/** Кабинет сотрудника: один раздел — очередь заявок. */
-const staffNav: NavItem[] = [{ to: paths.staff, label: "Заявки студентов", icon: Inbox }];
+const staffNav: NavItem[] = [
+  { to: paths.staff, label: "Заявки студентов", icon: Inbox, end: true },
+  { to: paths.staffComplaints, label: "Жалобы", icon: Flag },
+];
 
 /**
- * Навигация по роли. Студенту — его разделы, таб-бар и колокольчик. Сотруднику — только
- * «Заявки студентов» в меню, без таб-бара и колокольчика (студенческие страницы ему закрыты),
+ * Навигация по роли. Студенту — его разделы, таб-бар и колокольчик. Сотруднику —
+ * «Заявки студентов» и «Жалобы» без студенческого таб-бара и колокольчика,
  * а выход — кнопкой в шапке, потому что вкладки «Ещё» у него нет. Пока роль неизвестна — как студенту.
  */
 export function navFor(role: Role | undefined): {
@@ -221,6 +224,17 @@ export function AppShell() {
             )}
           </div>
         </header>
+
+        {role === "staff" && (
+          <nav
+            aria-label="Разделы сотрудника"
+            className="flex flex-wrap gap-1 border-b border-border px-4 py-2 lg:hidden"
+          >
+            {nav.primary.map((item) => (
+              <SidebarLink key={item.to} {...item} />
+            ))}
+          </nav>
+        )}
 
         <div
           className={cn(

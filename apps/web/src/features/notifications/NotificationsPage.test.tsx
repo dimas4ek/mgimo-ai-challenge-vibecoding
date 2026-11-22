@@ -198,7 +198,11 @@ describe("NotificationsPage", () => {
     // Студенческой навигации у сотрудника нет: ни колокольчика, ни вкладок; выход — в шапке и меню.
     expect(screen.queryByRole("link", { name: /Уведомления/ })).toBeNull();
     expect(screen.queryByRole("link", { name: "Расписание" })).toBeNull();
-    expect(screen.getByRole("link", { name: "Заявки студентов" })).toBeTruthy();
+    for (const name of ["Разделы", "Разделы сотрудника"]) {
+      const navigation = within(screen.getByRole("navigation", { name }));
+      expect(navigation.getByRole("link", { name: "Заявки студентов" })).toBeTruthy();
+      expect(navigation.getByRole("link", { name: "Жалобы" })).toBeTruthy();
+    }
     expect(screen.getAllByRole("button", { name: "Выйти" })).toHaveLength(2);
   });
 });
