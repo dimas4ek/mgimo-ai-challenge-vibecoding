@@ -76,7 +76,12 @@ export function setThemePreference(preference: ThemePreference): void {
   commit(compute(preference));
 }
 
-/** Тема приложения. Тумблер в профиле (#13) и в шапке пользуются этим же хуком. */
+/**
+ * Общая тема кабинета. `theme` совпадает с `data-theme` на корневом элементе,
+ * а `preference` отражает выбор пользователя: `system`, `light` или `dark`.
+ * Явный выбор сохраняется в `aihs-theme` и применяется в других вкладках.
+ * В режиме `system` тема обновляется при изменении настройки ОС.
+ */
 export function useTheme() {
   const { preference, theme } = useSyncExternalStore(subscribe, getSnapshot, () => SERVER_SNAPSHOT);
   return {
