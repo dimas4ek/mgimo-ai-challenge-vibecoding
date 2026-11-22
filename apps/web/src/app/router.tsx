@@ -186,6 +186,20 @@ export const routeTree: RouteObject[] = [
             lazy: () =>
               import("../features/staff/StaffPage").then((m) => ({ Component: m.StaffPage })),
           },
+          {
+            path: paths.staffComplaints,
+            lazy: () =>
+              import("../features/staff-moderation/StaffComplaintsPage").then((m) => ({
+                Component: m.StaffComplaintsPage,
+              })),
+          },
+          {
+            path: paths.staffComplaintPattern,
+            lazy: () =>
+              import("../features/staff-moderation/StaffComplaintsPage").then((m) => ({
+                Component: m.StaffComplaintPage,
+              })),
+          },
         ],
       },
       { path: "*", element: <NotFoundPage /> },
