@@ -25,6 +25,8 @@ export const LessonSchema = z.object({
   start: TimeSchema,
   end: TimeSchema,
   subject: z.string().min(1),
+  /** Ссылка на предмет учебного плана. Старые ответы могут не содержать идентификатор. */
+  subjectId: IdSchema.optional(),
   type: LessonTypeSchema,
   room: z.string().min(1),
   /** ФИО преподавателя, вымышленное. */
