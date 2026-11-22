@@ -8,6 +8,7 @@ export interface NotifyPayload {
   type: NotificationType;
   title: string;
   body: string;
+  dueDate?: string;
   link?: string | null;
 }
 
@@ -19,6 +20,7 @@ const toDto = (n: Row): Notification => ({
   title: n.title,
   body: n.body,
   createdAt: n.createdAt.toISOString(),
+  ...(n.dueDate ? { dueDate: n.dueDate } : {}),
   read: n.read,
   link: n.link,
 });
@@ -45,6 +47,7 @@ export async function notify(
       type: payload.type,
       title: payload.title,
       body: payload.body,
+      dueDate: payload.dueDate,
       link: payload.link ?? null,
       read: false,
       createdAt: now,

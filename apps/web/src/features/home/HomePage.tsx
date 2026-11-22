@@ -23,6 +23,7 @@ import {
 import { paths } from "../../app/paths";
 import { cn } from "../../lib/cn";
 import { buttonVariants, ErrorState, ListSkeleton, PageHeader } from "../../ui";
+import { formatDueDate } from "../notifications/model";
 import { formatDateTime, requestTypeLabel } from "../requests/model";
 import { RequestStatusBadge } from "../requests/RequestStatusBadge";
 import { LessonCard } from "../schedule/LessonCard";
@@ -190,10 +191,11 @@ function NextWeekLesson({ now }: { now: Date }) {
 
 function NotificationRow({ n, now }: { n: Notification; now: Date }) {
   const markRead = useMarkRead();
+  const dueDate = n.type === "deadline" ? n.dueDate : undefined;
   return (
     <li>
       <Link
-        to={n.link ?? paths.notifications}
+        to={n.link ?? (n.type === "deadline" ? paths.notificationDeadlines : paths.notifications)}
         onClick={() => {
           if (!n.read) markRead.mutate(n.id);
         }}
@@ -211,11 +213,18 @@ function NotificationRow({ n, now }: { n: Notification; now: Date }) {
             {!n.read && <span className="sr-only">Новое: </span>}
             {n.title}
           </span>
+          {dueDate && (
+            <time dateTime={dueDate} className="mt-0.5 block text-sm font-semibold text-primary">
+              до {formatDueDate(dueDate)}
+            </time>
+          )}
           <span className="mt-0.5 block text-sm text-muted-foreground line-clamp-2">{n.body}</span>
         </span>
-        <span className="shrink-0 text-xs text-muted-foreground">
-          {formatDateTime(n.createdAt, now)}
-        </span>
+        {!dueDate && (
+          <span className="shrink-0 text-xs text-muted-foreground">
+            {formatDateTime(n.createdAt, now)}
+          </span>
+        )}
       </Link>
     </li>
   );
@@ -224,14 +233,15 @@ function NotificationRow({ n, now }: { n: Notification; now: Date }) {
 function NotificationsBlock({ kind, now }: { kind: "deadlines" | "announcements"; now: Date }) {
   const query = useNotifications();
   const deadlines = kind === "deadlines";
-  const items = query.data ? (deadlines ? homeDeadlines : homeAnnouncements)(query.data.items) : [];
+  const notices = query.data?.items ?? [];
+  const items = deadlines ? homeDeadlines(notices, now) : homeAnnouncements(notices);
   return (
     <Block
       id={`home-${kind}`}
       title={deadlines ? "Дедлайны" : "Объявления деканата"}
       icon={deadlines ? AlarmClock : Megaphone}
-      to={paths.notifications}
-      linkLabel="Все уведомления"
+      to={deadlines ? paths.notificationDeadlines : paths.notifications}
+      linkLabel={deadlines ? "Все дедлайны" : "Все уведомления"}
     >
       {query.isPending ? (
         <ListSkeleton rows={2} label="Загружаем уведомления…" />

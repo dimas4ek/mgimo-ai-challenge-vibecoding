@@ -50,20 +50,19 @@ describe("модель главной", () => {
     ...over,
   });
 
-  it("дедлайны и объявления: только свой тип, непрочитанные сверху, потом новые, не больше лимита", () => {
+  it("дедлайны по сроку, включая сегодня, без просроченных и старых записей без даты", () => {
     const items = [
-      note({ title: "старый прочитанный", createdAt: "2026-11-01T00:00:00.000Z" }),
-      note({ title: "новый прочитанный", createdAt: "2026-11-18T00:00:00.000Z" }),
-      note({ title: "старый непрочитанный", read: false, createdAt: "2026-11-02T00:00:00.000Z" }),
-      note({ title: "ещё один", createdAt: "2026-11-05T00:00:00.000Z" }),
-      note({ type: "news", title: "новость" }),
+      note({ title: "позже", dueDate: "2026-12-02", read: false }),
+      note({ title: "сегодня", dueDate: "2026-11-19", createdAt: "2026-11-01T00:00:00.000Z" }),
+      note({ title: "через неделю", dueDate: "2026-11-26", createdAt: "2026-11-18T00:00:00.000Z" }),
+      note({ title: "завтра", dueDate: "2026-11-20" }),
+      note({ title: "просрочен", dueDate: "2026-11-18", read: false }),
+      note({ title: "старое без срока", read: false }),
+      note({ type: "news", title: "новость", dueDate: "2026-11-19" }),
     ];
-    expect(homeDeadlines(items).map((n) => n.title)).toEqual([
-      "старый непрочитанный",
-      "новый прочитанный",
-      "ещё один",
-    ]);
-    expect(homeDeadlines(items)).toHaveLength(HOME_LIMIT);
+    const shown = homeDeadlines(items, NOW);
+    expect(shown.map((n) => n.title)).toEqual(["сегодня", "завтра", "через неделю"]);
+    expect(shown).toHaveLength(HOME_LIMIT);
     expect(homeAnnouncements(items).map((n) => n.title)).toEqual(["новость"]);
   });
 
@@ -110,7 +109,7 @@ describe("главная «Сегодня»", () => {
     expect(await screen.findByText(/Доброе утро, Мирослава! Четверг, 19 ноября\./)).toBeTruthy();
     const links: [string, string, string][] = [
       ["Следующая пара", "Всё расписание", paths.schedule],
-      ["Дедлайны", "Все уведомления", paths.notifications],
+      ["Дедлайны", "Все дедлайны", paths.notificationDeadlines],
       ["Заявки", "Все заявки", paths.requests],
       ["Объявления деканата", "Все уведомления", paths.notifications],
     ];
@@ -124,7 +123,8 @@ describe("главная «Сегодня»", () => {
     open();
     const lesson = await within(block("Следующая пара")).findByRole("article");
     expect(lesson.textContent).toContain("Идёт сейчас");
-    expect(await screen.findByText("До 1 декабря сдать курсовую по ML")).toBeTruthy();
+    expect(await screen.findByText("Сдать курсовую по ML")).toBeTruthy();
+    expect(screen.getByText("до 30 ноября").getAttribute("datetime")).toBe("2026-11-30");
     expect(await within(block("Заявки")).findAllByRole("listitem")).toHaveLength(2);
     expect(screen.getByText("Хакатон AI High School")).toBeTruthy();
   });

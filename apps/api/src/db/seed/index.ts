@@ -2,7 +2,14 @@ import { hash } from "@node-rs/argon2";
 import { and, eq, inArray, isNull, notInArray } from "drizzle-orm";
 import type { Db } from "../client";
 import * as schema from "../schema";
-import { buildCurriculum, buildSeedData, demoGroupDetails, previousSemester, seedId } from "./data";
+import {
+  buildCurriculum,
+  buildSeedData,
+  demoCourseworkDeadline,
+  demoGroupDetails,
+  previousSemester,
+  seedId,
+} from "./data";
 import { seedDiscussions } from "./discussions";
 import { setSeededAt, withSeedLock } from "./seeded-at";
 
@@ -121,4 +128,19 @@ export async function seedGroupDetails(db: Db): Promise<void> {
       .set(details)
       .where(and(eq(schema.groups.id, seedId(`group:${key}`)), isNull(schema.groups.curator)));
   }
+}
+
+/** Обновляет известное уведомление демосида, сохраняя прочтение и дату публикации. */
+export async function seedCourseworkDeadline(db: Db): Promise<void> {
+  const { key, title, dueDate } = demoCourseworkDeadline;
+  await db
+    .update(schema.notifications)
+    .set({ title, dueDate })
+    .where(
+      and(
+        eq(schema.notifications.id, seedId(`notification:${key}`)),
+        eq(schema.notifications.type, "deadline"),
+        isNull(schema.notifications.dueDate),
+      ),
+    );
 }

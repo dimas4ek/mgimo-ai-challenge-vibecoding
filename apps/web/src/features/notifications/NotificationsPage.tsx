@@ -14,7 +14,7 @@ import { Link, useSearchParams } from "react-router";
 import { retryHint, useMarkRead, useNotifications } from "../../api";
 import { cn } from "../../lib/cn";
 import { Badge, Button, EmptyState, ErrorState, ListSkeleton, PageHeader } from "../../ui";
-import { formatTime, groupByDay, notificationTypeView, unreadLabel } from "./model";
+import { formatDueDate, formatTime, groupByDay, notificationTypeView, unreadLabel } from "./model";
 
 const typeIcon: Record<NotificationType, LucideIcon> = {
   news: Megaphone,
@@ -23,7 +23,13 @@ const typeIcon: Record<NotificationType, LucideIcon> = {
   request: FileText,
 };
 
-type Filter = "all" | "unread";
+type Filter = "all" | "unread" | "deadline";
+
+function matchesFilter(item: Notification, filter: Filter): boolean {
+  if (filter === "unread") return !item.read;
+  if (filter === "deadline") return item.type === "deadline";
+  return true;
+}
 
 /**
  * Лента: новости деканата, дедлайны, изменения расписания и статусы заявок, по дням.
@@ -33,7 +39,8 @@ type Filter = "all" | "unread";
 export function NotificationsPage() {
   const query = useNotifications();
   const [params, setParams] = useSearchParams();
-  const filter: Filter = params.get("filter") === "unread" ? "unread" : "all";
+  const selected = params.get("filter");
+  const filter: Filter = selected === "unread" || selected === "deadline" ? selected : "all";
   const unread = query.data?.unreadCount ?? 0;
 
   return (
@@ -46,12 +53,13 @@ export function NotificationsPage() {
       <div
         role="tablist"
         aria-label="Какие показать"
-        className="mb-4 inline-grid grid-cols-2 gap-1 rounded-lg bg-muted p-1"
+        className="mb-4 inline-flex max-w-full flex-wrap gap-1 rounded-lg bg-muted p-1"
       >
         {(
           [
             ["all", "Все"],
             ["unread", "Непрочитанные"],
+            ["deadline", "Дедлайны"],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -63,7 +71,7 @@ export function NotificationsPage() {
             aria-controls="notifications-panel"
             onClick={() => setParams(key === "all" ? {} : { filter: key }, { replace: true })}
             className={cn(
-              "min-h-11 cursor-pointer rounded-md px-4 text-sm font-semibold transition-colors",
+              "min-h-11 min-w-11 cursor-pointer rounded-md px-2 text-sm font-semibold transition-colors sm:px-4",
               filter === key
                 ? "bg-surface text-foreground shadow-card"
                 : "text-muted-foreground hover:text-foreground",
@@ -80,7 +88,7 @@ export function NotificationsPage() {
           <ErrorState description={retryHint(query.error)} onRetry={() => query.refetch()} />
         ) : (
           <Feed
-            items={filter === "unread" ? query.data.items.filter((n) => !n.read) : query.data.items}
+            items={query.data.items.filter((item) => matchesFilter(item, filter))}
             filter={filter}
           />
         )}
@@ -112,6 +120,9 @@ function MarkAllRead({ items }: { items: Notification[] }) {
 
 function Feed({ items, filter }: { items: Notification[]; filter: Filter }) {
   if (items.length === 0) {
+    if (filter === "deadline") {
+      return <EmptyState icon={AlarmClock} title="Дедлайнов пока нет" />;
+    }
     return filter === "unread" ? (
       <EmptyState
         icon={CheckCheck}
@@ -181,6 +192,11 @@ function NotificationCard({ item, now }: { item: Notification; now: Date }) {
         <h3 className={cn("leading-snug", item.read ? "font-medium" : "font-semibold")}>
           {item.title}
         </h3>
+        {item.type === "deadline" && item.dueDate && (
+          <time dateTime={item.dueDate} className="text-sm font-semibold text-primary">
+            до {formatDueDate(item.dueDate)}
+          </time>
+        )}
         {item.body && <p className="text-sm text-muted-foreground">{item.body}</p>}
       </div>
     </>

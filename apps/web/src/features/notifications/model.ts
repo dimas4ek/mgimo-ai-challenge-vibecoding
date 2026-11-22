@@ -23,6 +23,9 @@ const isoDay = new Intl.DateTimeFormat("en-CA", {
   timeZone: TZ,
 });
 const dayMonth = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", timeZone: TZ });
+
+/** Календарный срок без времени публикуется как дата по Москве. */
+export const formatDueDate = (day: string) => dayMonth.format(new Date(`${day}T00:00:00Z`));
 const dayMonthYear = new Intl.DateTimeFormat("ru-RU", {
   day: "numeric",
   month: "long",
