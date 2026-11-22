@@ -29,4 +29,9 @@ export const paths = {
 } as const;
 
 /** Разделы, которые на телефоне открываются из вкладки «Ещё» (для её подсветки). */
-export const morePaths: readonly string[] = [paths.more, paths.notifications, paths.profile];
+export const morePaths: readonly string[] = [
+  paths.more,
+  paths.notifications,
+  paths.profile,
+  paths.discussions,
+];

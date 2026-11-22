@@ -8,6 +8,7 @@ import {
   Inbox,
   type LucideIcon,
   Menu,
+  MessagesSquare,
   Moon,
   Sun,
   UserRound,
@@ -44,6 +45,7 @@ const primaryNav: NavItem[] = [
 
 /** Второстепенные: на телефоне живут во вкладке «Ещё», на десктопе — в меню. */
 export const secondaryNav: NavItem[] = [
+  { to: paths.discussions, label: "Обсуждения", icon: MessagesSquare },
   { to: paths.notifications, label: "Уведомления", icon: Bell, unread: true },
   { to: paths.profile, label: "Профиль", icon: UserRound },
 ];
