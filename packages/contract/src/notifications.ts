@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { IdSchema, IsoDateTimeSchema } from "./common";
+import { IdSchema, IsoDateSchema, IsoDateTimeSchema } from "./common";
 
 /** Новость, дедлайн, изменение в расписании, изменение статуса заявки. */
 export const NotificationTypeSchema = z.enum(["news", "deadline", "schedule_change", "request"]);
@@ -11,6 +11,8 @@ export const NotificationSchema = z.object({
   title: z.string().min(1),
   body: z.string(),
   createdAt: IsoDateTimeSchema,
+  /** День сдачи по Москве. Старые уведомления без срока остаются в ленте, но не входят в ближайшие дедлайны. */
+  dueDate: IsoDateSchema.optional(),
   read: z.boolean(),
   /** Путь внутри приложения, куда ведёт уведомление (`/requests/<id>`), или `null`. */
   link: z.string().startsWith("/").nullable(),
