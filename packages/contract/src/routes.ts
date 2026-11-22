@@ -17,7 +17,7 @@ import {
   DiscussionTopicSchema,
   DiscussionTopicSummarySchema,
 } from "./discussions";
-import { GradesSchema } from "./grades";
+import { CurriculumSchema, GradesSchema } from "./grades";
 import { HealthSchema } from "./health";
 import { NotificationListSchema, NotificationSchema } from "./notifications";
 import { ProfileSchema } from "./profile";
@@ -59,6 +59,7 @@ export const routes = {
       response: WeekScheduleSchema,
     },
     grades: { method: "GET", path: "/api/me/grades", response: GradesSchema },
+    curriculum: { method: "GET", path: "/api/me/curriculum", response: CurriculumSchema },
     /** Сброс демо-данных своего аккаунта (заявки, уведомления) к исходному сиду: для жюри на общих аккаунтах. */
     demoReset: { method: "POST", path: "/api/me/demo-reset", response: OkSchema },
     requests: {

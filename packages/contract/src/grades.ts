@@ -93,3 +93,45 @@ export const GradesSchema = z.object({
   summary: GradesSummarySchema,
 });
 export type Grades = z.infer<typeof GradesSchema>;
+
+/** Учебная нагрузка в академических часах. Итог — сумма трёх видов нагрузки. */
+export const AcademicHoursSchema = z.object({
+  lectures: z.int().nonnegative(),
+  practice: z.int().nonnegative(),
+  independent: z.int().nonnegative(),
+});
+export type AcademicHours = z.infer<typeof AcademicHoursSchema>;
+
+export const CurriculumDisciplineSchema = DisciplineGradeSchema.pick({
+  subject: true,
+  teacher: true,
+  controlForm: true,
+  credits: true,
+}).extend({
+  /** Стабильный идентификатор предмета, общий с расписанием. */
+  subjectId: IdSchema,
+  hours: AcademicHoursSchema,
+  /** Личные баллы студента. Учебный план доступен и до появления строки оценок. */
+  grade: DisciplineGradeSchema.pick({
+    semesterPoints: true,
+    examPoints: true,
+    totalPoints: true,
+    result: true,
+    exam: true,
+  }).nullable(),
+});
+export type CurriculumDiscipline = z.infer<typeof CurriculumDisciplineSchema>;
+
+export const CurriculumSemesterSchema = z.object({
+  id: IdSchema,
+  name: z.string().min(1),
+  disciplines: z.array(CurriculumDisciplineSchema),
+});
+export type CurriculumSemester = z.infer<typeof CurriculumSemesterSchema>;
+
+/** Учебный план группы студента. Семестры идут от новых к старым. */
+export const CurriculumSchema = z.object({
+  currentSemesterId: IdSchema.nullable(),
+  semesters: z.array(CurriculumSemesterSchema),
+});
+export type Curriculum = z.infer<typeof CurriculumSchema>;

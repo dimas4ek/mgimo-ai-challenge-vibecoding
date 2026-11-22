@@ -28,6 +28,7 @@ describe("routes", () => {
         "me.profile",
         "me.schedule",
         "me.grades",
+        "me.curriculum",
         "me.demoReset",
         "me.discussions.comment",
         "me.discussions.create",
