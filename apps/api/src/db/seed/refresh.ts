@@ -1,7 +1,10 @@
+import { and, eq, inArray } from "drizzle-orm";
 import { mondayOf, moscowDate } from "../../lib/moscow-time";
 import type { Db } from "../client";
-import { seed } from "./index";
-import { getSeededAt } from "./seeded-at";
+import * as schema from "../schema";
+import { buildSeedData } from "./data";
+import { seed, seedAccounts } from "./index";
+import { getSeededAt, setSeededAt, withSeedLock } from "./seeded-at";
 
 /** Раз в час проверяем, не началась ли новая неделя по Москве. */
 export const REFRESH_INTERVAL_MS = 60 * 60 * 1000;
@@ -13,27 +16,58 @@ const weekOf = (at: Date) => mondayOf(moscowDate(at));
  * Сохраняет заявки, их историю, выданные справки и уведомления по заявкам.
  * На пустой базе создаёт исходные демо-данные. Возвращает `true`, если данные обновились.
  */
-export async function refreshWeeklySchedule(_db: Db, _now: Date): Promise<boolean> {
-  throw new Error("not implemented");
+export async function refreshWeeklySchedule(db: Db, now: Date): Promise<boolean> {
+  return withSeedLock(db, async (tx) => {
+    const seededAt = await getSeededAt(tx);
+    if (seededAt && weekOf(seededAt) >= weekOf(now)) return false;
+
+    const data = buildSeedData(now, seedAccounts);
+    const userIds = data.users.map((user) => user.id);
+    if (!seededAt) {
+      // У старой базы может не быть отметки, хотя демо-аккаунты уже существуют.
+      const [existing] = await tx
+        .select({ id: schema.users.id })
+        .from(schema.users)
+        .where(inArray(schema.users.id, userIds))
+        .limit(1);
+      if (!existing) {
+        await seed(tx, { now });
+        return true;
+      }
+    }
+
+    // Изменения удаляются каскадом вместе с парами. Обновляем только учебные группы сида.
+    await tx.delete(schema.lessons).where(
+      inArray(
+        schema.lessons.groupId,
+        data.groups.map((group) => group.id),
+      ),
+    );
+    await tx.insert(schema.lessons).values(data.lessons);
+    await tx.insert(schema.lessonChanges).values(data.lessonChanges);
+
+    await tx
+      .delete(schema.notifications)
+      .where(
+        and(
+          eq(schema.notifications.type, "schedule_change"),
+          inArray(schema.notifications.userId, userIds),
+        ),
+      );
+    await tx
+      .insert(schema.notifications)
+      .values(data.notifications.filter((notification) => notification.type === "schedule_change"));
+    await setSeededAt(tx, now);
+    return true;
+  });
 }
 
-/**
- * Пересев демо-данных при смене недели: если неделя по Москве (`mondayOf(moscowDate(now))`)
- * отличается от недели засева (`getSeededAt`) или базу ещё не засевали — полный `seed(db, { now })`.
- * Отметки засева нет (пустая или старая база до #35) — тоже пересев: неделю не знаем.
- * `true`, если был пересев. Вызывается при старте API и раз в час (`src/index.ts`), не в тестах.
- */
-export async function refreshDemoDataIfStale(db: Db, now: Date): Promise<boolean> {
-  const seededAt = await getSeededAt(db);
-  if (seededAt && weekOf(seededAt) === weekOf(now)) return false;
-  // seed() пишет всё в одной транзакции: читающие запросы видят либо старую неделю, либо новую.
-  await seed(db, { now });
-  return true;
-}
+/** Недельная проверка для запуска API и фонового таймера. */
+export { refreshWeeklySchedule as refreshDemoDataIfStale };
 
 /**
- * Одна проверка без исключений наружу: ошибка пересева логируется, API работает на прежних данных.
- * `true`, если был пересев.
+ * Одна проверка без исключений наружу: ошибка обновления логируется, API работает на прежних данных.
+ * `true`, если расписание обновилось.
  */
 export async function refreshSafely(
   db: Db,
@@ -41,11 +75,11 @@ export async function refreshSafely(
   log: Pick<Console, "log" | "error"> = console,
 ): Promise<boolean> {
   try {
-    const refreshed = await refreshDemoDataIfStale(db, now);
-    if (refreshed) log.log("Демо-данные засеяны на текущую неделю (Europe/Moscow)");
+    const refreshed = await refreshWeeklySchedule(db, now);
+    if (refreshed) log.log("Демо-расписание обновлено на текущую неделю (Europe/Moscow)");
     return refreshed;
   } catch (error) {
-    log.error("Не удалось пересеять демо-данные, работаем на прежних:", error);
+    log.error("Не удалось обновить демо-расписание", error);
     return false;
   }
 }

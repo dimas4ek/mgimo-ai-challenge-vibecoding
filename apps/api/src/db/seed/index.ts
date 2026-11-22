@@ -3,7 +3,7 @@ import { inArray, notInArray } from "drizzle-orm";
 import type { Db } from "../client";
 import * as schema from "../schema";
 import { buildSeedData } from "./data";
-import { setSeededAt } from "./seeded-at";
+import { setSeededAt, withSeedLock } from "./seeded-at";
 
 /**
  * Тестовые аккаунты вымышленного вуза. Пароли тоже вымышленные, они же будут в README для жюри.
@@ -36,19 +36,19 @@ export async function seed(db: Db, options: SeedOptions): Promise<void> {
   const data = buildSeedData(options.now, seedAccounts);
   const userIds = data.users.map((u) => u.id);
 
-  // argon2 медленный нарочно: хешируем только тех, кого ещё нет в БД.
-  const existing = await db
-    .select({ id: schema.users.id })
-    .from(schema.users)
-    .where(inArray(schema.users.id, userIds));
-  const existingIds = new Set(existing.map((r) => r.id));
-  const newUsers = await Promise.all(
-    data.users
-      .filter((u) => !existingIds.has(u.id))
-      .map(async ({ password, ...u }) => ({ ...u, passwordHash: await hash(password) })),
-  );
+  await withSeedLock(db, async (tx) => {
+    // argon2 медленный нарочно: хешируем только тех, кого ещё нет в БД.
+    const existing = await tx
+      .select({ id: schema.users.id })
+      .from(schema.users)
+      .where(inArray(schema.users.id, userIds));
+    const existingIds = new Set(existing.map((r) => r.id));
+    const newUsers = await Promise.all(
+      data.users
+        .filter((u) => !existingIds.has(u.id))
+        .map(async ({ password, ...u }) => ({ ...u, passwordHash: await hash(password) })),
+    );
 
-  await db.transaction(async (tx) => {
     // Чужие пользователи (их в демо быть не должно) уходят вместе с сессиями и уведомлениями.
     await tx.delete(schema.users).where(notInArray(schema.users.id, userIds));
     for (const { password: _password, id, ...u } of data.users) {

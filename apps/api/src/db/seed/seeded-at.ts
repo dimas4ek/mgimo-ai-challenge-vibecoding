@@ -1,12 +1,20 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { Db } from "../client";
 import * as schema from "../schema";
 
 /** Единственная строка таблицы `seed_meta`. */
 const META_ID = 1;
 
+/** Сериализует засев, обновление недели и сброс, даже когда отметки засева ещё нет. */
+export async function withSeedLock<T>(db: Db, write: (tx: Db) => Promise<T>): Promise<T> {
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`LOCK TABLE ${schema.seedMeta} IN SHARE ROW EXCLUSIVE MODE`);
+    return write(tx);
+  });
+}
+
 /**
- * Момент последнего засева демо-данных (`seed(db, { now })` сохраняет `seededAt = now`).
+ * Момент последнего засева или обновления демо-расписания.
  * От него сброс демо-данных строит заявки и уведомления, чтобы они совпадали с расписанием в базе.
  * Старая база без отметки — `null`.
  */
@@ -18,7 +26,7 @@ export async function getSeededAt(db: Db): Promise<Date | null> {
   return row?.seededAt ?? null;
 }
 
-/** Записать момент засева (внутри транзакции сида). */
+/** Записать момент построения расписания внутри транзакции. */
 export async function setSeededAt(db: Pick<Db, "insert">, at: Date): Promise<void> {
   await db
     .insert(schema.seedMeta)
