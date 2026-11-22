@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { fixtures, routes, type WeekSchedule } from "@aihs/contract";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
 import { setupServer } from "msw/node";
 import { createMemoryRouter, RouterProvider } from "react-router";
@@ -97,6 +97,39 @@ describe("SchedulePage", () => {
     expect(
       within(screen.getByRole("heading", { name: /Вторник, 17 ноября/ })).getByText("Сегодня"),
     ).toBeTruthy();
+  });
+
+  it("точка входа Tab совпадает с выбором, стрелки перемещают только фокус", async () => {
+    at("2026-11-17", "10:00");
+    renderAt("/schedule?view=week");
+    await screen.findByRole("heading", { name: "Понедельник, 16 ноября" });
+    const today = screen.getByRole("tab", { name: "Сегодня" });
+    const week = screen.getByRole("tab", { name: "Неделя" });
+    const weekPanel = screen.getByRole("tabpanel", { name: "Неделя" });
+    expect(week.tabIndex).toBe(0);
+    expect(today.tabIndex).toBe(-1);
+    expect(week.getAttribute("aria-controls")).toBe(weekPanel.id);
+    expect(weekPanel.getAttribute("aria-labelledby")).toBe(week.id);
+    act(() => week.focus());
+
+    fireEvent.keyDown(week, { key: "ArrowLeft" });
+    expect(document.activeElement).toBe(today);
+    expect(today.tabIndex).toBe(0);
+    expect(week.getAttribute("aria-selected")).toBe("true");
+    fireEvent.keyDown(today, { key: "ArrowRight" });
+    expect(document.activeElement).toBe(week);
+
+    fireEvent.keyDown(week, { key: "Home" });
+    expect(document.activeElement).toBe(today);
+    act(() => weekPanel.focus());
+    expect(week.tabIndex).toBe(0);
+    expect(today.tabIndex).toBe(-1);
+    fireEvent.click(today);
+    const todayPanel = screen.getByRole("tabpanel", { name: "Сегодня" });
+    expect(today.getAttribute("aria-controls")).toBe(todayPanel.id);
+    expect(todayPanel.getAttribute("aria-labelledby")).toBe(today.id);
+    expect(weekPanel).toHaveProperty("hidden", true);
+    await screen.findByRole("heading", { name: "Обработка естественного языка" });
   });
 
   it("ссылка ?week= из уведомления открывает нужную неделю и запрашивает её у API", async () => {

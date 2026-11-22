@@ -3,8 +3,7 @@ import { CalendarCheck, CalendarX, ChevronLeft, ChevronRight } from "lucide-reac
 import { type ReactNode, useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
 import { retryHint, useSchedule } from "../../api";
-import { cn } from "../../lib/cn";
-import { Badge, Button, EmptyState, ErrorState, ListSkeleton, PageHeader } from "../../ui";
+import { Badge, Button, EmptyState, ErrorState, ListSkeleton, PageHeader, Tabs } from "../../ui";
 import { LessonCard } from "./LessonCard";
 import {
   addDays,
@@ -21,7 +20,11 @@ import {
   scheduleWeekQueryDate,
 } from "./model";
 
-type View = "today" | "week";
+const PERIOD_TABS = [
+  { value: "today", label: "Сегодня" },
+  { value: "week", label: "Неделя" },
+] as const;
+type View = (typeof PERIOD_TABS)[number]["value"];
 
 /** «Сейчас», обновляется раз в минуту: подсветка «Идёт сейчас» не залипает. */
 function useNow(): Date {
@@ -84,43 +87,13 @@ export function SchedulePage() {
   return (
     <>
       <PageHeader title="Расписание" description={formatDayTitle(today)} />
-      <div
-        role="tablist"
-        aria-label="Период"
-        className="mb-4 inline-grid grid-cols-2 gap-1 rounded-lg bg-muted p-1"
-      >
-        {(
-          [
-            ["today", "Сегодня"],
-            ["week", "Неделя"],
-          ] as const
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            id={`schedule-tab-${key}`}
-            aria-selected={view === key}
-            aria-controls="schedule-panel"
-            onClick={() => show(key)}
-            className={cn(
-              "min-h-11 cursor-pointer rounded-md px-5 text-sm font-semibold transition-colors",
-              view === key
-                ? "bg-surface text-foreground shadow-card"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-      <div id="schedule-panel" role="tabpanel" aria-labelledby={`schedule-tab-${view}`}>
+      <Tabs id="schedule" label="Период" tabs={PERIOD_TABS} value={view} onChange={show}>
         {view === "today" ? (
           <TodayView today={today} now={now} onShowWeek={() => show("week")} />
         ) : (
           <WeekView week={week} today={today} now={now} onWeek={showWeek} />
         )}
-      </div>
+      </Tabs>
     </>
   );
 }
