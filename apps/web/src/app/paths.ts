@@ -22,6 +22,8 @@ export const paths = {
   requestPattern: "/requests/:id",
   request: (id: string) => `/requests/${encodeURIComponent(id)}`,
   notifications: "/notifications",
+  /** Та же лента с выбранным фильтром по дедлайнам. */
+  notificationDeadlines: "/notifications?filter=deadline",
   profile: "/profile",
   group: "/group",
   /** Таб «Ещё» на телефоне: уведомления, профиль, тема, выход. */
