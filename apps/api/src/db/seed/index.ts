@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+import { fixtures } from "@aihs/contract";
 import { hash } from "@node-rs/argon2";
 import { and, eq, inArray, isNull, notInArray } from "drizzle-orm";
 import type { Db } from "../client";
@@ -31,10 +33,24 @@ export interface SeedOptions {
   now: Date;
 }
 
+const groupMembers = Object.entries(fixtures.groupMembers).flatMap(([group, people]) =>
+  people.map(([number, lastName, firstName, middleName]) => ({
+    id: seedId(`roster:student:${number}`),
+    userId: seedId(`roster:user:${number}`),
+    groupId: seedId(`group:${group}`),
+    login: `roster-${number}`,
+    lastName,
+    firstName,
+    middleName,
+    recordBookNumber: `AI-DEMO-${number}`,
+    email: `roster-${number}@student.aihs.example`,
+  })),
+);
+
 /**
  * Заполняет БД демо-данными AI High School. Идемпотентен: повторный запуск с тем же `now`
  * даёт то же состояние (id детерминированные). Заявки и уведомления, созданные руками, стираются —
- * этим же пользуется сброс демо-данных. Пароли пользователей при повторе не перехешируются,
+ * этим же пользуется сброс демо-данных. Пароли демо-аккаунтов при повторе не перехешируются,
  * поэтому открытые сессии переживают сид.
  *
  * Пары строятся на несколько недель вокруг `now`: есть субботние пары, переносы, замены и отмены,
@@ -58,7 +74,11 @@ export async function seed(db: Db, options: SeedOptions): Promise<void> {
     );
 
     // Чужие пользователи (их в демо быть не должно) уходят вместе с сессиями и уведомлениями.
-    await tx.delete(schema.users).where(notInArray(schema.users.id, userIds));
+    await tx
+      .delete(schema.users)
+      .where(
+        notInArray(schema.users.id, [...userIds, ...groupMembers.map(({ userId }) => userId)]),
+      );
     for (const { password: _password, id, ...u } of data.users) {
       if (existingIds.has(id)) {
         await tx
@@ -84,6 +104,7 @@ export async function seed(db: Db, options: SeedOptions): Promise<void> {
     await tx.insert(schema.faculties).values(data.faculties);
     await tx.insert(schema.groups).values(data.groups);
     await tx.insert(schema.students).values(data.students);
+    await seedGroupMembers(tx);
     await tx.insert(schema.teachers).values(data.teachers);
     await tx.insert(schema.subjects).values(data.subjects);
     await tx.insert(schema.lessons).values(data.lessons);
@@ -128,6 +149,45 @@ export async function seedGroupDetails(db: Db): Promise<void> {
       .set(details)
       .where(and(eq(schema.groups.id, seedId(`group:${key}`)), isNull(schema.groups.curator)));
   }
+  await seedGroupMembers(db);
+}
+
+/** Добавляет одногруппников, которым не выдаются пароли для входа. */
+async function seedGroupMembers(db: Db): Promise<void> {
+  const existing = new Set(
+    (
+      await db
+        .select({ id: schema.users.id })
+        .from(schema.users)
+        .where(
+          inArray(
+            schema.users.id,
+            groupMembers.map(({ userId }) => userId),
+          ),
+        )
+    ).map(({ id }) => id),
+  );
+  const missing = groupMembers.filter(({ userId }) => !existing.has(userId));
+  if (missing.length) {
+    // Исходное случайное значение не сохраняется и никому не выдаётся.
+    const passwordHash = await hash(randomBytes(32));
+    await db
+      .insert(schema.users)
+      .values(
+        missing.map(({ userId, login, firstName, lastName }) => ({
+          id: userId,
+          login,
+          passwordHash,
+          role: "student" as const,
+          displayName: `${firstName} ${lastName}`,
+        })),
+      )
+      .onConflictDoNothing();
+  }
+  await db
+    .insert(schema.students)
+    .values(groupMembers.map(({ login: _login, ...member }) => member))
+    .onConflictDoNothing();
 }
 
 /** Обновляет известное уведомление демосида, сохраняя прочтение и дату публикации. */

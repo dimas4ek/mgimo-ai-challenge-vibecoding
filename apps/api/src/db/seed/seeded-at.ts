@@ -5,7 +5,7 @@ import * as schema from "../schema";
 /** Единственная строка таблицы `seed_meta`. */
 const META_ID = 1;
 /** Версия шаблонов расписания: старый сид обновляется при первом запуске новой версии. */
-export const DEMO_SCHEDULE_VERSION = 2;
+export const DEMO_SCHEDULE_VERSION = 3;
 
 /** Сериализует засев, обновление недели и сброс, даже когда отметки засева ещё нет. */
 export async function withSeedLock<T>(db: Db, write: (tx: Db) => Promise<T>): Promise<T> {

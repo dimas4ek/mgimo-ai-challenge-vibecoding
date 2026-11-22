@@ -95,12 +95,17 @@ const mockProfile = () => (isStudent2() ? student2Profile : fixtures.profile);
 
 function mockGroup(): MyGroup {
   const { group, program, course, lastName, firstName, middleName } = mockProfile();
+  const classmates = isStudent2() ? fixtures.groupMembers.ad201 : fixtures.groupMembers.pii301;
+  const members = [
+    [lastName, firstName, middleName].filter(Boolean).join(" "),
+    ...classmates.map(([, ...name]) => name.join(" ")),
+  ].sort((a, b) => a.localeCompare(b, "ru"));
   return {
     name: group,
     program,
     course,
     curator: isStudent2() ? "Игнат Павлович Ремезов" : "Лидия Андреевна Ветлугина",
-    members: [[lastName, firstName, middleName].filter(Boolean).join(" ")],
+    members,
     announcements: isStudent2()
       ? []
       : ["Материалы консультации по проекту доступны у куратора группы."],

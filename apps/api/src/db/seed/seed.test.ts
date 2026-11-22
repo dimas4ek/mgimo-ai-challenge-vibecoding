@@ -4,11 +4,12 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { addDays, mondayOf } from "../../lib/moscow-time";
 import { createDb, type Db, type DbHandle } from "../client";
 import * as schema from "../schema";
-import { buildSeedData } from "./data";
+import { buildSeedData, seedId } from "./data";
 import { seed, seedAccounts } from "./index";
 
 // Четверг 19.11.2026, 12:00 по Москве. Текущая неделя — 16–22.11.
 const NOW = new Date("2026-11-19T09:00:00Z");
+const demoUserIds = new Set([seedId("user:student"), seedId("user:student2")]);
 
 /** Все таблицы целиком, отсортированные по ключу: для сравнения «до» и «после». */
 async function snapshot(db: Db) {
@@ -59,16 +60,22 @@ describe("seed", () => {
     await handle.close();
   });
 
-  it("создаёт двух студентов из разных групп и одного сотрудника", async () => {
+  it("создаёт три демо-аккаунта и заполняет обе группы", async () => {
     const users = await db.select().from(schema.users);
-    expect(users.map((u) => [u.login, u.role]).sort()).toEqual([
+    expect(
+      users
+        .filter((u) => !u.login.startsWith("roster-"))
+        .map((u) => [u.login, u.role])
+        .sort(),
+    ).toEqual([
       [seedAccounts.staff.login, "staff"],
       [seedAccounts.student.login, "student"],
       [seedAccounts.student2.login, "student"],
     ]);
     const students = await db.select().from(schema.students);
-    expect(students).toHaveLength(2);
-    expect(new Set(students.map((s) => s.groupId)).size).toBe(2);
+    for (const group of ["pii301", "ad201"]) {
+      expect(students.filter((s) => s.groupId === seedId(`group:${group}`))).toHaveLength(7);
+    }
   });
 
   it("хранит пароли только как argon2id-хеш, и они проверяются", async () => {
@@ -76,8 +83,10 @@ describe("seed", () => {
     for (const u of users) {
       const account = Object.values(seedAccounts).find((a) => a.login === u.login);
       expect(u.passwordHash.startsWith("$argon2id$")).toBe(true);
-      expect(u.passwordHash).not.toContain(account?.password);
-      expect(await verify(u.passwordHash, account?.password ?? "")).toBe(true);
+      if (account) expect(u.passwordHash).not.toContain(account.password);
+      expect(await verify(u.passwordHash, account?.password ?? "unused-fixture-password")).toBe(
+        Boolean(account),
+      );
     }
   });
 
@@ -117,6 +126,7 @@ describe("seed", () => {
 
   it("о каждом изменении расписания текущей и следующей недели студент получает уведомление", async () => {
     for (const s of await db.select().from(schema.students)) {
+      if (!demoUserIds.has(s.userId)) continue;
       const changes = await db
         .select({
           date: schema.lessons.date,
@@ -181,7 +191,11 @@ describe("seed", () => {
       const next = baseSlots(before, id, nextMonday);
       expect(current).toEqual(baseSlots(after, id, monday));
       expect(next).toEqual(baseSlots(after, id, nextMonday));
-      expect(current).not.toEqual(next);
+      // 2026-W53 и 2027-W01 обе нечётные. W52 и W02 используют второй шаблон.
+      const even = baseSlots(before, id, addDays(monday, -7));
+      expect(current).toEqual(next);
+      expect(even).toEqual(baseSlots(after, id, addDays(nextMonday, 7)));
+      expect(even).not.toEqual(current);
     }
   });
 
@@ -198,11 +212,16 @@ describe("seed", () => {
     });
     const students = await db.select().from(schema.students);
     const subjectSets = await Promise.all(
-      students.map(async (s) => {
-        const rows = await db.select().from(schema.grades).where(eq(schema.grades.studentId, s.id));
-        expect(rows.length).toBeGreaterThan(0);
-        return rows.map((r) => r.subjectId).sort();
-      }),
+      students
+        .filter((s) => demoUserIds.has(s.userId))
+        .map(async (s) => {
+          const rows = await db
+            .select()
+            .from(schema.grades)
+            .where(eq(schema.grades.studentId, s.id));
+          expect(rows.length).toBeGreaterThan(0);
+          return rows.map((r) => r.subjectId).sort();
+        }),
     );
     expect(subjectSets[0]).not.toEqual(subjectSets[1]);
     const results = (await db.select().from(schema.grades)).map((g) => g.result);

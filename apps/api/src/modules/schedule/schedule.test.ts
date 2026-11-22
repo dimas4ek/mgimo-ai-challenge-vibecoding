@@ -84,16 +84,27 @@ describe("GET /api/me/group", () => {
     const theirs = await get(routes.me.group.path, "student2");
     expect(mine.status).toBe(200);
     expect(theirs.status).toBe(200);
-    expect(MyGroupSchema.parse(await mine.json())).toMatchObject({
+    const pii = MyGroupSchema.parse(await mine.json());
+    const ad = MyGroupSchema.parse(await theirs.json());
+    expect(pii).toMatchObject({
       name: "ПИИ-301",
-      members: ["Лебедянская Мирослава Игоревна"],
+      members: expect.arrayContaining([
+        "Лебедянская Мирослава Игоревна",
+        "Берестнева Кира Олеговна",
+      ]),
       announcements: [expect.any(String)],
     });
-    expect(MyGroupSchema.parse(await theirs.json())).toMatchObject({
+    expect(ad).toMatchObject({
       name: "АД-201",
-      members: [expect.stringContaining("Колосовский")],
+      members: expect.arrayContaining([
+        "Колосовский Тихон Андреевич",
+        "Афанасьева Василиса Глебовна",
+      ]),
       announcements: [],
     });
+    expect(pii.members).toHaveLength(7);
+    expect(ad.members).toHaveLength(7);
+    expect(pii.members.some((member) => ad.members.includes(member))).toBe(false);
   });
 
   it("требует студенческую сессию", async () => {
@@ -148,6 +159,7 @@ describe("GET /api/me/schedule", () => {
       expect(current.lessons.length).toBeGreaterThan(0);
       expect(next.lessons.length).toBeGreaterThan(0);
       expect(baseSlots(current)).not.toEqual(baseSlots(next));
+      expect(current.lessons[0]?.subject).not.toEqual(next.lessons[0]?.subject);
       for (const week of [current, next]) {
         const slots = new Set(week.lessons.map((lesson) => `${lesson.date} ${lesson.start}`));
         expect(slots.size).toBe(week.lessons.length);
