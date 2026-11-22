@@ -4,7 +4,7 @@
 
 > **Это концепт для конкурса, а не официальный сервис.** Вуз AI High School (Высшая Школа ИИ), его факультеты, преподаватели, студенты и оценки вымышлены.
 
-**Демо:** [aihighschool.me](https://aihighschool.me) — работает на виртуальной машине в Yandex Cloud.
+**Демо:** [aihighschool.me](https://aihighschool.me) — работает в Yandex Cloud и доступно через API Gateway.
 
 ## Тестовые аккаунты
 
@@ -19,23 +19,11 @@
 
 ## Продакшен на Yandex Cloud
 
-Демо размещено на Ubuntu VM в Yandex Cloud. DNS домена `aihighschool.me` направлен на VM; Docker Compose запускает PostgreSQL, API со статикой сайта и Caddy. Данные PostgreSQL хранятся в именованном volume `pgdata`, поэтому переживают пересоздание контейнера.
+В Namecheap запись `ALIAS @` направляет `aihighschool.me` на служебный адрес Yandex API Gateway. Публичный HTTPS заканчивается на шлюзе. Yandex Certificate Manager управляет сертификатом Let's Encrypt, а CNAME `_acme-challenge` нужен для его автоматического продления.
 
-На этой VM Caddy использует сертификат Let's Encrypt, выпущенный Certbot через DNS-01: проверка домена выполняется TXT-записью `_acme-challenge`, без входящего запроса к сайту. Сертификат установлен в `/etc/letsencrypt/live/aihighschool.me/` и настроен в Caddy на самой VM. Это локальная настройка текущего сервера: стандартные `deploy/compose.yml` и `deploy/Caddyfile` в репозитории оставлены с автоматическим HTTPS от Caddy.
+Шлюз передаёт запросы по внутренней сети Yandex Cloud на Ubuntu VM. В рабочей конфигурации Caddy маршрут шлюза принимает HTTP от служебных подсетей `198.19.0.0/16`. Docker Compose запускает PostgreSQL, API со статикой сайта и Caddy. Данные PostgreSQL хранятся в именованном томе `pgdata` и переживают пересоздание контейнеров.
 
-Ручной сертификат не обновляется автоматически; действующий сертификат истекает **19 февраля 2027 года**. Чтобы выпустить следующий, на VM повторите:
-
-```sh
-sudo certbot certonly --manual --preferred-challenges dns -d aihighschool.me
-```
-
-Добавьте в DNS Namecheap TXT-запись с именем `_acme-challenge` и значением, которое покажет Certbot. Дождитесь появления значения в публичном DNS и продолжите Certbot. После выпуска перезапустите только контейнер Caddy, чтобы он загрузил новый сертификат:
-
-```sh
-sudo docker compose --env-file .env -f deploy/compose.yml up -d --force-recreate caddy
-```
-
-Не удаляйте старую TXT-запись до успешной проверки Certbot и не добавляйте полученное значение в репозиторий.
+Конфигурация шлюза и рабочий `Caddyfile` настроены в облаке и на ВМ. Шаблоны `deploy/compose.yml` и `deploy/Caddyfile` в репозитории описывают самостоятельный запуск с автоматическим HTTPS от Caddy.
 
 ## Что попробовать за 2 минуты
 
