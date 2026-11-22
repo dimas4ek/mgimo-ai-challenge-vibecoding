@@ -1,6 +1,7 @@
 import {
   type CreateDiscussionCommentInput,
   type CreateDiscussionInput,
+  type CreateDiscussionReportInput,
   type DiscussionScope,
   routes,
 } from "@aihs/contract";
@@ -42,5 +43,12 @@ export function useAddDiscussionComment(id: string) {
     mutationFn: (body: CreateDiscussionCommentInput) =>
       call(http.comment, { body, params: { id } }),
     onSuccess: () => cache.invalidateQueries({ queryKey: topicKey(id) }),
+  });
+}
+
+export function useReportDiscussionComment(commentId: string) {
+  return useMutation({
+    mutationFn: (body: CreateDiscussionReportInput) =>
+      call(http.report, { body, params: { commentId } }),
   });
 }
