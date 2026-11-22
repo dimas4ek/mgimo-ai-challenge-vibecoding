@@ -12,6 +12,7 @@ import {
   type StaffRequestItem,
 } from "@aihs/contract";
 import { type HttpHandler, HttpResponse, http } from "msw";
+import { mockDiscussions } from "./discussions";
 
 /**
  * MSW-хендлеры всех роутов контракта поверх фикстур `@aihs/contract`.
@@ -39,10 +40,12 @@ const fresh = (): Db => ({
 });
 
 let db = fresh();
+const discussions = mockDiscussions(() => db.me);
 
 /** Сбросить «базу» моков к фикстурам. В тестах — перед каждым тестом. */
 export function resetMockDb(options?: { as?: keyof typeof fixtures.me }): void {
   db = fresh();
+  discussions.reset();
   if (options?.as) db.me = fixtures.me[options.as];
 }
 
@@ -71,6 +74,7 @@ function requireStaff() {
 const staffItem = (r: Request): StaffRequestItem => ({ ...r, student: STUDENT });
 
 export const handlers: HttpHandler[] = [
+  ...discussions.handlers,
   http.get(routes.health.path, () => HttpResponse.json({ status: "ok" })),
 
   // ── auth ──

@@ -134,6 +134,20 @@ export const routeTree: RouteObject[] = [
               })),
           },
           {
+            path: paths.discussions,
+            lazy: () =>
+              import("../features/discussions/DiscussionsPage").then((m) => ({
+                Component: m.DiscussionsPage,
+              })),
+          },
+          {
+            path: paths.discussionPattern,
+            lazy: () =>
+              import("../features/discussions/DiscussionPage").then((m) => ({
+                Component: m.DiscussionPage,
+              })),
+          },
+          {
             path: paths.requestPattern,
             lazy: () =>
               import("../features/requests/RequestPage").then((m) => ({
