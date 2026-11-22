@@ -1,6 +1,5 @@
 import { IdSchema, routes } from "@aihs/contract";
 import { Hono } from "hono";
-import { requireAuth, requireRole } from "../../auth/middleware";
 import type { AppEnv } from "../../env";
 import { apiError } from "../../http/errors";
 import { validate } from "../../http/validate";
@@ -9,8 +8,6 @@ import { getDiscussionReport, listDiscussionReports, resolveDiscussionReport } f
 export function staffDiscussionReportRoutes() {
   const { list, get, resolve } = routes.staff.discussionReports;
   return new Hono<AppEnv>()
-    .use(list.path, requireAuth, requireRole("staff"))
-    .use(`${list.path}/*`, requireAuth, requireRole("staff"))
     .get(list.path, async (c) => c.json(await listDiscussionReports(c.var.db)))
     .get(get.path, async (c) => {
       const id = IdSchema.safeParse(c.req.param("id"));

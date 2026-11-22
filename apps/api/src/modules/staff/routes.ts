@@ -6,7 +6,6 @@ import {
   StaffRequestsQuerySchema,
 } from "@aihs/contract";
 import { Hono } from "hono";
-import { requireAuth, requireRole } from "../../auth/middleware";
 import type { AppEnv } from "../../env";
 import { apiError } from "../../http/errors";
 import { validate } from "../../http/validate";
@@ -24,7 +23,6 @@ import { changeStatusAndNotify } from "./service";
  */
 export function staffRoutes() {
   return new Hono<AppEnv>()
-    .use("/api/staff/*", requireAuth, requireRole("staff"))
     .get(routes.staff.requests.list.path, validate("query", StaffRequestsQuerySchema), async (c) =>
       c.json(await listAllRequests(c.var.db, c.req.valid("query"))),
     )

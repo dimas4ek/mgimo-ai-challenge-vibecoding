@@ -1,5 +1,6 @@
 import { type Health, routes } from "@aihs/contract";
 import { Hono } from "hono";
+import { requireAuth, requireRole } from "./auth/middleware";
 import { authRoutes } from "./auth/routes";
 import type { AppDeps, AppEnv } from "./env";
 import { errorHandler, notFoundHandler } from "./http/errors";
@@ -40,6 +41,7 @@ export function createApp(deps: AppDeps) {
   app.route("/", gradeRoutes());
   app.route("/", demoRoutes());
   app.route("/", discussionRoutes());
+  app.use("/api/staff/*", requireAuth, requireRole("staff"));
   app.route("/", staffRoutes());
   app.route("/", staffDiscussionReportRoutes());
   app.route("/", certificateRoutes());
