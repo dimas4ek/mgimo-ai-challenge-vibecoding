@@ -139,6 +139,16 @@ describe("вход", () => {
   });
 });
 
+it("второй студент переходит из профиля в свою группу", async () => {
+  resetMockDb({ as: "student2" });
+  const router = open(paths.profile);
+  fireEvent.click(await screen.findByRole("link", { name: "АД-201" }));
+  expect(await screen.findByRole("heading", { name: "АД-201" })).toBeTruthy();
+  expect(where(router)).toBe(paths.group);
+  expect(screen.getByText("Колосовский Тихон Андреевич")).toBeTruthy();
+  expect(screen.getByText("Пока нет объявлений группы.")).toBeTruthy();
+});
+
 describe("профиль и выход", () => {
   it("показывает данные студента; «Выйти» ведёт на вход и закрывает кабинет", async () => {
     resetMockDb({ as: "student" });

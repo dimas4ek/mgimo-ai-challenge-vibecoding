@@ -42,7 +42,10 @@ export function ProfilePage() {
             </CardTitle>
             <p className="mt-1 text-sm text-muted-foreground">
               Группа{" "}
-              <Link className="text-primary underline underline-offset-4" to={paths.group}>
+              <Link
+                className="inline-flex min-h-11 min-w-11 items-center text-primary underline underline-offset-4"
+                to={paths.group}
+              >
                 {profile.data.group}
               </Link>{" "}
               · {profile.data.course} курс

@@ -5,7 +5,9 @@ import {
   fixtures,
   LoginInputSchema,
   type Me,
+  type MyGroup,
   type Notification,
+  type Profile,
   type Request,
   type RequestListItem,
   routes,
@@ -29,6 +31,17 @@ import { mockDiscussions } from "./discussions";
  */
 
 const STUDENT = { fullName: "Лебедянская Мирослава Игоревна", group: "ПИИ-301" };
+const student2Profile: Profile = {
+  lastName: "Колосовский",
+  firstName: "Тихон",
+  middleName: "Андреевич",
+  recordBookNumber: "AI-2025-0217",
+  faculty: "Факультет науки о данных",
+  program: "01.03.02 Анализ данных и машинное обучение",
+  course: 2,
+  group: "АД-201",
+  email: "t.kolosovsky@student.aihs.example",
+};
 
 type Db = {
   me: Me | null;
@@ -77,6 +90,22 @@ function requireStaff() {
 }
 
 const staffItem = (r: Request): StaffRequestItem => ({ ...r, student: STUDENT });
+const isStudent2 = () => db.me?.id === fixtures.me.student2.id;
+const mockProfile = () => (isStudent2() ? student2Profile : fixtures.profile);
+
+function mockGroup(): MyGroup {
+  const { group, program, course, lastName, firstName, middleName } = mockProfile();
+  return {
+    name: group,
+    program,
+    course,
+    curator: isStudent2() ? "Игнат Павлович Ремезов" : "Лидия Андреевна Ветлугина",
+    members: [[lastName, firstName, middleName].filter(Boolean).join(" ")],
+    announcements: isStudent2()
+      ? []
+      : ["Материалы консультации по проекту доступны у куратора группы."],
+  };
+}
 
 export const handlers: HttpHandler[] = [
   ...discussions.handlers,
@@ -99,34 +128,18 @@ export const handlers: HttpHandler[] = [
   http.get(routes.auth.me.path, () => (db.me ? HttpResponse.json(db.me) : unauthorized())),
 
   // ── студент ──
-  http.get(routes.me.profile.path, () => requireStudent() ?? HttpResponse.json(fixtures.profile)),
-  http.get(
-    routes.me.group.path,
-    () =>
-      requireStudent() ??
-      HttpResponse.json({
-        name: fixtures.profile.group,
-        program: fixtures.profile.program,
-        course: fixtures.profile.course,
-        curator: "Лидия Андреевна Ветлугина",
-        members: ["Лебедянская Мирослава Игоревна"],
-        announcements: [],
-      }),
-  ),
+  http.get(routes.me.profile.path, () => requireStudent() ?? HttpResponse.json(mockProfile())),
+  http.get(routes.me.group.path, () => requireStudent() ?? HttpResponse.json(mockGroup())),
   http.get(
     routes.me.schedule.path,
-    () =>
-      requireStudent() ??
-      HttpResponse.json(mockCurriculumSchedule(db.me?.id === fixtures.me.student2.id)),
+    () => requireStudent() ?? HttpResponse.json(mockCurriculumSchedule(isStudent2())),
   ),
   http.get(routes.me.grades.path, () => requireStudent() ?? HttpResponse.json(fixtures.grades)),
   http.get(
     routes.me.curriculum.path,
     () =>
       requireStudent() ??
-      HttpResponse.json(
-        db.me?.id === fixtures.me.student2.id ? mockStudent2Curriculum : mockStudentCurriculum,
-      ),
+      HttpResponse.json(isStudent2() ? mockStudent2Curriculum : mockStudentCurriculum),
   ),
   http.get(routes.me.certificates.get.path, ({ params }) => {
     const denied = requireStudent();
