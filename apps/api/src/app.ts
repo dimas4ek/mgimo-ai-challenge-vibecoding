@@ -6,6 +6,7 @@ import { errorHandler, notFoundHandler } from "./http/errors";
 import { spaStatic } from "./http/static";
 import { certificateRoutes } from "./modules/certificates/routes";
 import { demoRoutes } from "./modules/demo/routes";
+import { discussionRoutes } from "./modules/discussions/routes";
 import { gradeRoutes } from "./modules/grades/routes";
 import { notificationRoutes } from "./modules/notifications/routes";
 import { profileRoutes } from "./modules/profile/routes";
@@ -37,6 +38,7 @@ export function createApp(deps: AppDeps) {
   app.route("/", scheduleRoutes());
   app.route("/", gradeRoutes());
   app.route("/", demoRoutes());
+  app.route("/", discussionRoutes());
   app.route("/", staffRoutes());
   app.route("/", certificateRoutes());
   // Статика последней: API-роуты выше неё всегда в приоритете.
