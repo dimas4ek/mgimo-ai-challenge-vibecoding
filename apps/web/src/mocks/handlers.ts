@@ -101,6 +101,19 @@ export const handlers: HttpHandler[] = [
   // ── студент ──
   http.get(routes.me.profile.path, () => requireStudent() ?? HttpResponse.json(fixtures.profile)),
   http.get(
+    routes.me.group.path,
+    () =>
+      requireStudent() ??
+      HttpResponse.json({
+        name: fixtures.profile.group,
+        program: fixtures.profile.program,
+        course: fixtures.profile.course,
+        curator: "Лидия Андреевна Ветлугина",
+        members: ["Лебедянская Мирослава Игоревна"],
+        announcements: [],
+      }),
+  ),
+  http.get(
     routes.me.schedule.path,
     () =>
       requireStudent() ??

@@ -1,6 +1,7 @@
 // Схема БД. Меняется только через миграцию: `pnpm db:generate` (drizzle-kit), SQL руками не правим.
 // Значения enum совпадают с enum из `@aihs/contract`, чтобы строки уходили в DTO как есть.
 import type { CertificateGrade } from "@aihs/contract";
+import { sql } from "drizzle-orm";
 import {
   boolean,
   date,
@@ -115,6 +116,8 @@ export const groups = pgTable("groups", {
   /** «09.03.01 Прикладной искусственный интеллект». */
   program: text("program").notNull(),
   course: integer("course").notNull(),
+  curator: text("curator"),
+  announcements: text("announcements").array().notNull().default(sql`ARRAY[]::text[]`),
   departmentId: uuid("department_id").references(() => departments.id),
 });
 

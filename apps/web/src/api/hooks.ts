@@ -19,6 +19,7 @@ import { api, isApiError } from "./client";
 export const queryKeys = {
   me: ["me"] as const,
   profile: ["profile"] as const,
+  group: ["group"] as const,
   schedule: (week?: string) => ["schedule", week ?? "current"] as const,
   grades: ["grades"] as const,
   curriculum: ["curriculum"] as const,
@@ -110,6 +111,10 @@ export function useDemoReset() {
 
 export function useProfile() {
   return useQuery({ queryKey: queryKeys.profile, queryFn: ({ signal }) => api.me.profile(signal) });
+}
+
+export function useMyGroup() {
+  return useQuery({ queryKey: queryKeys.group, queryFn: ({ signal }) => api.me.group(signal) });
 }
 
 /** Неделя расписания. `week` — любая дата недели `YYYY-MM-DD`; без неё — текущая неделя по МСК. */

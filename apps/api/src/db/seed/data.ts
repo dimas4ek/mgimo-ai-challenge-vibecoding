@@ -298,6 +298,14 @@ const groups = {
 } as const satisfies Record<string, GroupDef>;
 type GroupKey = keyof typeof groups;
 
+export const demoGroupDetails = {
+  pii301: {
+    curator: "Лидия Андреевна Ветлугина",
+    announcements: ["Материалы консультации по проекту доступны у куратора группы."],
+  },
+  ad201: { curator: "Игнат Павлович Ремезов", announcements: [] },
+} satisfies Record<GroupKey, { curator: string; announcements: string[] }>;
+
 interface PersonDef {
   key: "student" | "student2" | "staff";
   login: string;
@@ -943,6 +951,7 @@ export function buildSeedData(
       facultyId: id.faculty(g.faculty),
       program: g.program,
       course: g.course,
+      ...demoGroupDetails[k],
     })),
     students: studentRows,
     teachers: (Object.entries(teachers) as [TeacherKey, string][]).map(([k, fullName]) => ({

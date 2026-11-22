@@ -1,8 +1,8 @@
 import { hash } from "@node-rs/argon2";
-import { eq, inArray, notInArray } from "drizzle-orm";
+import { and, eq, inArray, isNull, notInArray } from "drizzle-orm";
 import type { Db } from "../client";
 import * as schema from "../schema";
-import { buildCurriculum, buildSeedData, previousSemester } from "./data";
+import { buildCurriculum, buildSeedData, demoGroupDetails, previousSemester, seedId } from "./data";
 import { seedDiscussions } from "./discussions";
 import { setSeededAt, withSeedLock } from "./seeded-at";
 
@@ -111,4 +111,14 @@ export async function seedCurriculum(db: Db): Promise<void> {
     .insert(schema.curriculum)
     .values(buildCurriculum(current.id, past?.id))
     .onConflictDoNothing();
+}
+
+/** Дополняет существующую демобазу без пересоздания пользователей и заявок. */
+export async function seedGroupDetails(db: Db): Promise<void> {
+  for (const [key, details] of Object.entries(demoGroupDetails)) {
+    await db
+      .update(schema.groups)
+      .set(details)
+      .where(and(eq(schema.groups.id, seedId(`group:${key}`)), isNull(schema.groups.curator)));
+  }
 }

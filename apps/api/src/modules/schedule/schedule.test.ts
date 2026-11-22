@@ -1,5 +1,6 @@
 import {
   ApiErrorSchema,
+  MyGroupSchema,
   ProfileSchema,
   routes,
   type WeekSchedule,
@@ -74,6 +75,30 @@ describe("GET /api/me/profile", () => {
   it("без сессии → 401, сотруднику → 403", async () => {
     expect((await get(routes.me.profile.path, null)).status).toBe(401);
     expect((await get(routes.me.profile.path, "staff")).status).toBe(403);
+  });
+});
+
+describe("GET /api/me/group", () => {
+  it("возвращает только свою группу и имена её участников", async () => {
+    const mine = await get(`${routes.me.group.path}?group=АД-201`, "student");
+    const theirs = await get(routes.me.group.path, "student2");
+    expect(mine.status).toBe(200);
+    expect(theirs.status).toBe(200);
+    expect(MyGroupSchema.parse(await mine.json())).toMatchObject({
+      name: "ПИИ-301",
+      members: ["Лебедянская Мирослава Игоревна"],
+      announcements: [expect.any(String)],
+    });
+    expect(MyGroupSchema.parse(await theirs.json())).toMatchObject({
+      name: "АД-201",
+      members: [expect.stringContaining("Колосовский")],
+      announcements: [],
+    });
+  });
+
+  it("требует студенческую сессию", async () => {
+    expect((await get(routes.me.group.path, null)).status).toBe(401);
+    expect((await get(routes.me.group.path, "staff")).status).toBe(403);
   });
 });
 
