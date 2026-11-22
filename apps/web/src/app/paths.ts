@@ -7,6 +7,10 @@ export const paths = {
   home: "/",
   schedule: "/schedule",
   grades: "/grades",
+  discussions: "/discussions",
+  /** Шаблон для роутера; ссылку строй через `paths.discussion(id)`. */
+  discussionPattern: "/discussions/:id",
+  discussion: (id: string) => `/discussions/${encodeURIComponent(id)}`,
   requests: "/requests",
   /** Шаблон для роутера; ссылку строй через `paths.request(id)`. */
   requestPattern: "/requests/:id",
