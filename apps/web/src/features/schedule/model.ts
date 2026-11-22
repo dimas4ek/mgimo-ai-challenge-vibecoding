@@ -5,6 +5,11 @@ import type { Lesson, LessonChangeKind, LessonType } from "@aihs/contract";
 /** Дата `YYYY-MM-DD` по Москве. */
 export type IsoDate = string;
 
+/** Возвращает дату из параметра week, если её принимает API расписания. */
+export function parseScheduleWeek(_value: string | null): IsoDate | null {
+  throw new Error("not implemented");
+}
+
 const TZ = "Europe/Moscow";
 
 const moscowParts = new Intl.DateTimeFormat("en-CA", {
