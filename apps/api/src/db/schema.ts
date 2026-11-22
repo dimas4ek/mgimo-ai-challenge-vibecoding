@@ -95,6 +95,11 @@ export const faculties = pgTable("faculties", {
   name: text("name").notNull().unique(),
 });
 
+export const departments = pgTable("departments", {
+  id: id(),
+  name: text("name").notNull().unique(),
+});
+
 /** Учебная группа. Направление и курс — свойства группы. */
 export const groups = pgTable("groups", {
   id: id(),
@@ -105,6 +110,7 @@ export const groups = pgTable("groups", {
   /** «09.03.01 Прикладной искусственный интеллект». */
   program: text("program").notNull(),
   course: integer("course").notNull(),
+  departmentId: uuid("department_id").references(() => departments.id),
 });
 
 export const students = pgTable("students", {
@@ -123,6 +129,38 @@ export const students = pgTable("students", {
   recordBookNumber: text("record_book_number").notNull().unique(),
   email: text("email").notNull(),
 });
+
+/** Отсутствие кафедры у темы означает, что тема общая для вуза. */
+export const discussionTopics = pgTable(
+  "discussion_topics",
+  {
+    id: id(),
+    departmentId: uuid("department_id").references(() => departments.id),
+    authorId: uuid("author_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("discussion_topics_department_date_idx").on(t.departmentId, t.createdAt)],
+);
+
+export const discussionComments = pgTable(
+  "discussion_comments",
+  {
+    id: id(),
+    topicId: uuid("topic_id")
+      .notNull()
+      .references(() => discussionTopics.id, { onDelete: "cascade" }),
+    authorId: uuid("author_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    body: text("body").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("discussion_comments_topic_date_idx").on(t.topicId, t.createdAt)],
+);
 
 export const teachers = pgTable("teachers", {
   id: id(),
