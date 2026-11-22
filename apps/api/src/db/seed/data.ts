@@ -28,6 +28,11 @@ type Weekday = 1 | 2 | 3 | 4 | 5 | 6;
 /** Пары строятся на недели от −2 до +4 относительно текущей. */
 const WEEKS = [-2, -1, 0, 1, 2, 3, 4];
 
+/** Выбирает альтернативный шаблон по понедельнику недели (дата в МСК, YYYY-MM-DD). */
+export function usesAlternateTimetable(_weekMonday: string): boolean {
+  throw new Error("not implemented");
+}
+
 const ddmm = (isoDate: string) => `${isoDate.slice(8, 10)}.${isoDate.slice(5, 7)}`;
 const hoursBefore = (now: Date, hours: number) => new Date(now.getTime() - hours * 3_600_000);
 
