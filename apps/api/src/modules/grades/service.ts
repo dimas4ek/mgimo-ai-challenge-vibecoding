@@ -98,12 +98,32 @@ async function gradeRows(db: Db, where: SQL | undefined): Promise<PastDebt[]> {
     .innerJoin(schema.teachers, eq(schema.teachers.id, schema.grades.teacherId))
     .where(where)
     .orderBy(asc(schema.subjects.name), asc(schema.grades.id));
-  return rows.map(({ examDate, examStart, examRoom, ...r }) => ({
-    ...r,
-    totalPoints: r.semesterPoints + (r.examPoints ?? 0),
+  return rows.map(({ id, semester, subject, teacher, controlForm, credits, ...grade }) => ({
+    id,
+    semester,
+    subject,
+    teacher,
+    controlForm,
+    credits,
+    ...gradeProgress(grade),
+  }));
+}
+
+export function gradeProgress({
+  examDate,
+  examStart,
+  examRoom,
+  ...grade
+}: Pick<
+  typeof schema.grades.$inferSelect,
+  "semesterPoints" | "examPoints" | "result" | "examDate" | "examStart" | "examRoom"
+>) {
+  return {
+    ...grade,
+    totalPoints: grade.semesterPoints + (grade.examPoints ?? 0),
     exam:
       examDate && examStart && examRoom
         ? { date: examDate, start: examStart, room: examRoom }
         : null,
-  }));
+  };
 }

@@ -248,6 +248,33 @@ export const semesters = pgTable("semesters", {
   isCurrent: boolean("is_current").notNull().default(false),
 });
 
+/** Дисциплина учебного плана группы в конкретном семестре. */
+export const curriculum = pgTable(
+  "curriculum",
+  {
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+    semesterId: uuid("semester_id")
+      .notNull()
+      .references(() => semesters.id, { onDelete: "cascade" }),
+    subjectId: uuid("subject_id")
+      .notNull()
+      .references(() => subjects.id),
+    teacherId: uuid("teacher_id")
+      .notNull()
+      .references(() => teachers.id),
+    controlForm: controlFormEnum("control_form").notNull(),
+    credits: integer("credits").notNull(),
+    lectureHours: integer("lecture_hours").notNull(),
+    practiceHours: integer("practice_hours").notNull(),
+    independentHours: integer("independent_hours").notNull(),
+  },
+  (t) => [
+    uniqueIndex("curriculum_group_semester_subject_idx").on(t.groupId, t.semesterId, t.subjectId),
+  ],
+);
+
 /** Баллы БРС студента по дисциплине в семестре. Итоговая сумма считается, а не хранится. */
 export const grades = pgTable(
   "grades",

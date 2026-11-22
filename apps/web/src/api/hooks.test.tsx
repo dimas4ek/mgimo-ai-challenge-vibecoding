@@ -12,6 +12,7 @@ import {
   createQueryClient,
   useChangeRequestStatus,
   useCreateRequest,
+  useCurriculum,
   useGrades,
   useLogin,
   useLogout,
@@ -79,7 +80,6 @@ describe("данные студента", () => {
   type Hook = () => { isSuccess: boolean; data: unknown };
   const cases: [string, Hook, unknown][] = [
     ["useProfile", () => useProfile(), fixtures.profile],
-    ["useSchedule", () => useSchedule("2026-11-18"), fixtures.weekSchedule],
     ["useGrades", () => useGrades(), fixtures.grades],
   ];
   it.each(cases)("%s отдаёт данные по схеме", async (_name, hook, expected) => {
@@ -87,6 +87,23 @@ describe("данные студента", () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toEqual(expected);
   });
+
+  it.each(["student", "student2"] as const)(
+    "расписание %s ссылается на свой учебный план",
+    async (as) => {
+      resetMockDb({ as });
+      const { result } = renderHook(() => [useSchedule(), useCurriculum()] as const, setup());
+      await waitFor(() => expect(result.current.every((query) => query.isSuccess)).toBe(true));
+      const [schedule, plan] = result.current;
+      const ids = new Set(
+        plan.data?.semesters.flatMap((semester) => semester.disciplines.map((d) => d.subjectId)),
+      );
+      const lessons = schedule.data?.lessons ?? [];
+      expect(lessons.length).toBeGreaterThan(0);
+      for (const lesson of lessons)
+        expect(lesson.subjectId && ids.has(lesson.subjectId)).toBe(true);
+    },
+  );
 
   it("useSchedule передаёт week в query", async () => {
     let seen: string | null = null;

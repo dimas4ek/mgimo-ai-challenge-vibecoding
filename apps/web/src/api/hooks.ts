@@ -21,6 +21,7 @@ export const queryKeys = {
   profile: ["profile"] as const,
   schedule: (week?: string) => ["schedule", week ?? "current"] as const,
   grades: ["grades"] as const,
+  curriculum: ["curriculum"] as const,
   requests: ["requests"] as const,
   request: (id: string) => ["requests", id] as const,
   notifications: ["notifications"] as const,
@@ -121,6 +122,13 @@ export function useSchedule(week?: string) {
 
 export function useGrades() {
   return useQuery({ queryKey: queryKeys.grades, queryFn: ({ signal }) => api.me.grades(signal) });
+}
+
+export function useCurriculum() {
+  return useQuery({
+    queryKey: queryKeys.curriculum,
+    queryFn: ({ signal }) => api.me.curriculum(signal),
+  });
 }
 
 export function useRequests() {

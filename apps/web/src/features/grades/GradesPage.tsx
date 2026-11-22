@@ -1,9 +1,21 @@
 import { BRS_MAX, type DisciplineGrade, type Grades } from "@aihs/contract";
 import { CalendarClock, CircleAlert, CircleCheck, Clock, GraduationCap } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router";
 import { retryHint } from "../../api";
 import { useGrades } from "../../api/hooks";
+import { paths } from "../../app/paths";
 import { cn } from "../../lib/cn";
-import { Badge, Card, CardTitle, EmptyState, ErrorState, PageHeader, Skeleton } from "../../ui";
+import {
+  Badge,
+  Card,
+  CardTitle,
+  EmptyState,
+  ErrorState,
+  PageHeader,
+  Skeleton,
+  Tabs,
+} from "../../ui";
+import { CurriculumPanel } from "./CurriculumPanel";
 import { ForecastCard } from "./ForecastCard";
 import {
   controlFormLabel,
@@ -15,7 +27,6 @@ import {
   pluralDays,
   resultLabel,
   sessionPhase,
-  sortForDisplay,
   whenLabel,
 } from "./model";
 import { PastDebts } from "./PastDebts";
@@ -172,12 +183,42 @@ function DisciplineCard({ d }: { d: DisciplineGrade }) {
   );
 }
 
-/** Успеваемость: сводка «как у меня дела» сверху, сроки сессии, дисциплины (долги первыми). */
+const gradeTabs = [
+  { value: "overview", label: "Обзор" },
+  { value: "disciplines", label: "Дисциплины" },
+] as const;
+
 export function GradesPage({ now = new Date() }: { now?: Date }) {
-  const grades = useGrades();
+  const [params] = useSearchParams();
+  const navigate = useNavigate();
+  const tab = params.get("tab") === "disciplines" ? "disciplines" : "overview";
   return (
     <>
-      <PageHeader title="Успеваемость" description={grades.data?.semester} />
+      <PageHeader title="Успеваемость" />
+      <Tabs
+        id="grades"
+        label="Успеваемость"
+        tabs={gradeTabs}
+        value={tab}
+        onChange={(next) => {
+          if (next !== tab) navigate(next === "overview" ? paths.grades : paths.curriculum());
+        }}
+      >
+        {tab === "overview" ? (
+          <GradesOverview now={now} />
+        ) : (
+          <CurriculumPanel semesterId={params.get("semester")} subjectId={params.get("subject")} />
+        )}
+      </Tabs>
+    </>
+  );
+}
+
+function GradesOverview({ now }: { now: Date }) {
+  const grades = useGrades();
+  const currentDebts = grades.data?.disciplines.filter((d) => disciplineState(d) === "debt") ?? [];
+  return (
+    <>
       {grades.isPending ? (
         <div role="status" aria-live="polite" className="flex flex-col gap-3">
           <span className="sr-only">Загружаем оценки…</span>
@@ -195,20 +236,23 @@ export function GradesPage({ now = new Date() }: { now?: Date }) {
         />
       ) : (
         <div className="flex flex-col gap-6">
+          <p className="text-sm text-muted-foreground">{grades.data.semester}</p>
           <NextExamCard disciplines={grades.data.disciplines} now={now} />
           <Summary grades={grades.data} now={now} />
           <ForecastCard disciplines={grades.data.disciplines} pastDebts={grades.data.pastDebts} />
           <PastDebts debts={grades.data.pastDebts} />
-          <section aria-labelledby="disciplines-title">
-            <h2 id="disciplines-title" className="mb-3 text-lg font-semibold">
-              Дисциплины
-            </h2>
-            <ul className="grid gap-3 lg:grid-cols-2">
-              {sortForDisplay(grades.data.disciplines).map((d) => (
-                <DisciplineCard key={d.id} d={d} />
-              ))}
-            </ul>
-          </section>
+          {currentDebts.length > 0 && (
+            <section aria-labelledby="current-debts-title">
+              <h2 id="current-debts-title" className="mb-3 text-lg font-semibold">
+                Долги текущего семестра
+              </h2>
+              <ul className="grid gap-3 lg:grid-cols-2">
+                {currentDebts.map((d) => (
+                  <DisciplineCard key={d.id} d={d} />
+                ))}
+              </ul>
+            </section>
+          )}
         </div>
       )}
     </>

@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 import { type DisciplineGrade, fixtures, type Grades, routes } from "@aihs/contract";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
 import { setupServer } from "msw/node";
 import { MemoryRouter } from "react-router";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createQueryClient } from "../../api/hooks";
+import { mockStudentCurriculum } from "../../mocks/curriculum";
 import { handlers, resetMockDb } from "../../mocks/handlers";
 import { GradesPage } from "./GradesPage";
 import { examLine, formatExamSlot, nextExam, whenLabel } from "./model";
@@ -85,7 +86,7 @@ function open(grades?: Grades) {
   client.setDefaultOptions({ queries: { retry: false } });
   render(
     <QueryClientProvider client={client}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={["/grades"]}>
         <GradesPage now={NOW} />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -99,8 +100,9 @@ describe("даты экзаменов: экран", () => {
     expect(within(block).getByRole("heading", { name: "Машинное обучение" })).toBeTruthy();
     expect(within(block).getByText("Экзамен 12 января, 10:00, ауд. А-214")).toBeTruthy();
     expect(within(block).getByText(/через 54 дня/)).toBeTruthy();
-    const list = screen.getByRole("region", { name: "Дисциплины" });
-    expect(within(list).getByText("Зачёт 17 ноября, 14:00, ауд. Б-305")).toBeTruthy();
+    fireEvent.click(screen.getByRole("tab", { name: "Дисциплины" }));
+    fireEvent.click(await screen.findByRole("link", { name: /Этика искусственного интеллекта/ }));
+    expect(await screen.findByText("Зачёт 17 ноября, 14:00, ауд. Б-305")).toBeTruthy();
   });
 
   it("дат нет — блока нет, в карточках «Дата пока не назначена»", async () => {
@@ -108,9 +110,22 @@ describe("даты экзаменов: экран", () => {
       ...fixtures.grades,
       disciplines: fixtures.grades.disciplines.map((x) => ({ ...x, exam: null })),
     };
+    const curriculum = {
+      ...mockStudentCurriculum,
+      semesters: mockStudentCurriculum.semesters.map((semester) => ({
+        ...semester,
+        disciplines: semester.disciplines.map((discipline) => ({
+          ...discipline,
+          grade: discipline.grade && { ...discipline.grade, exam: null },
+        })),
+      })),
+    };
+    server.use(http.get(routes.me.curriculum.path, () => HttpResponse.json(curriculum)));
     open(grades);
     expect(await screen.findByRole("heading", { name: "Как у меня дела" })).toBeTruthy();
     expect(screen.queryByRole("region", { name: "Ближайший экзамен" })).toBeNull();
-    expect(screen.getAllByText("Дата пока не назначена")).toHaveLength(grades.disciplines.length);
+    fireEvent.click(screen.getByRole("tab", { name: "Дисциплины" }));
+    fireEvent.click(await screen.findByRole("link", { name: /Машинное обучение/ }));
+    expect(await screen.findByText("Дата пока не назначена")).toBeTruthy();
   });
 });

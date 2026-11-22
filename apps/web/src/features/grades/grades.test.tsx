@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
 import { setupServer } from "msw/node";
+import { MemoryRouter } from "react-router";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createQueryClient } from "../../api/hooks";
 import { handlers, resetMockDb } from "../../mocks/handlers";
@@ -127,12 +128,14 @@ const withCurrentDebt = {
 const useCurrentDebt = () =>
   server.use(http.get(routes.me.grades.path, () => HttpResponse.json(withCurrentDebt)));
 
-function open() {
+function open(path = "/grades") {
   const client = createQueryClient();
   client.setDefaultOptions({ queries: { retry: false } });
   render(
     <QueryClientProvider client={client}>
-      <GradesPage now={NOW} />
+      <MemoryRouter initialEntries={[path]}>
+        <GradesPage now={NOW} />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -143,7 +146,7 @@ describe("экран успеваемости", () => {
     expect(screen.getByRole("status").textContent).toContain("Загружаем оценки");
   });
 
-  it("сводка сверху, сессия, долг первым и подписан текстом", async () => {
+  it("в обзоре есть сводка, сессия и долги текущего семестра", async () => {
     useCurrentDebt();
     open();
     expect(await screen.findByRole("heading", { name: "Как у меня дела" })).toBeTruthy();
@@ -154,11 +157,41 @@ describe("экран успеваемости", () => {
     expect(screen.getByText("2 из 4")).toBeTruthy();
     expect(screen.getByText(/28 декабря – 24 января/).textContent).toContain("через 39 дней");
 
-    const section = screen.getByRole("region", { name: "Дисциплины" });
+    const section = screen.getByRole("region", { name: "Долги текущего семестра" });
     const cards = within(section).getAllByRole("heading", { level: 3 });
     expect(cards[0]?.textContent).toBe("Теория вероятностей и статистика");
     expect(screen.getByText("Неудовлетворительно")).toBeTruthy();
-    expect(screen.getByText("ещё не сдан")).toBeTruthy();
+  });
+
+  it("вкладка открывает дисциплины, выбор семестра сохраняет доступ к прошлым оценкам", async () => {
+    open();
+    fireEvent.click(screen.getByRole("tab", { name: "Дисциплины" }));
+    const select = await screen.findByRole<HTMLSelectElement>("combobox", { name: "Семестр" });
+    expect(select.selectedOptions[0]?.textContent).toBe(fixtures.grades.semester);
+    expect(screen.queryByRole("heading", { name: "Как у меня дела" })).toBeNull();
+
+    fireEvent.change(select, { target: { value: select.options[1]?.value } });
+    const debt = fixtures.grades.pastDebts[0];
+    expect(debt).toBeDefined();
+    if (!debt) throw new Error("Нет демодолга");
+    fireEvent.click(screen.getByRole("link", { name: new RegExp(debt.subject) }));
+    expect(await screen.findByRole("heading", { name: debt.subject })).toBeTruthy();
+    expect(screen.getByText("Форма контроля")).toBeTruthy();
+    expect(screen.getByText("Всего часов")).toBeTruthy();
+    expect(screen.getByText("Неудовлетворительно")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("link", { name: "Все дисциплины" }));
+    expect(screen.getByRole<HTMLSelectElement>("combobox").selectedOptions[0]?.textContent).toBe(
+      debt.semester,
+    );
+  });
+
+  it("ссылка из расписания сразу открывает нужную карточку", async () => {
+    const [subject] = fixtures.grades.disciplines;
+    if (!subject) throw new Error("Нет демодисциплины");
+    open(`/grades?tab=disciplines&subject=${subject.id}`);
+    expect(await screen.findByRole("heading", { name: subject.subject })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Дисциплины", selected: true })).toBeTruthy();
   });
 
   it("калькулятор: по умолчанию достижимая цель, переключение показывает правило и итог", async () => {

@@ -25,6 +25,7 @@ describe("createDb (PGlite в памяти)", () => {
     )) as { rows: { table_name: string }[] };
     expect(res.rows.map((r) => r.table_name)).toEqual([
       "certificates",
+      "curriculum",
       "departments",
       "discussion_comments",
       "discussion_reports",

@@ -1,7 +1,16 @@
-import { type DisciplineGrade, fixtures, GradesSchema, routes } from "@aihs/contract";
+import {
+  CurriculumSchema,
+  type DisciplineGrade,
+  fixtures,
+  GradesSchema,
+  routes,
+  WeekScheduleSchema,
+} from "@aihs/contract";
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../../app";
 import { createDb, type DbHandle } from "../../db/client";
+import * as schema from "../../db/schema";
 import { seed, seedAccounts } from "../../db/seed";
 import { addDays, mondayOf, moscowDate } from "../../lib/moscow-time";
 import { summarize } from "./service";
@@ -39,6 +48,68 @@ const grades = async (who: keyof typeof cookies) => {
   expect(res.status).toBe(200);
   return GradesSchema.parse(await res.json());
 };
+
+describe("GET /api/me/curriculum", () => {
+  const path = routes.me.curriculum.path;
+  const lookup = async (who: "student" | "student2") => {
+    const res = await app.request(path, { headers: { cookie: cookies[who] } });
+    expect(res.status).toBe(200);
+    return CurriculumSchema.parse(await res.json());
+  };
+
+  it("доступен только авторизованному студенту", async () => {
+    expect((await app.request(path)).status).toBe(401);
+    expect((await app.request(path, { headers: { cookie: cookies.staff } })).status).toBe(403);
+  });
+
+  it("возвращает учебный план своей группы, прошлые оценки и ссылки из расписания", async () => {
+    const plans = await Promise.all([lookup("student"), lookup("student2")]);
+    expect(plans[0]?.semesters).toHaveLength(2);
+    expect(plans[1]?.semesters).toHaveLength(1);
+    expect(plans[0]?.semesters[1]?.disciplines).toContainEqual(
+      expect.objectContaining({
+        subject: "Философия науки",
+        grade: expect.objectContaining({ result: "passed" }),
+      }),
+    );
+    const groupSubjects: Set<string>[] = [];
+    for (const [i, who] of (["student", "student2"] as const).entries()) {
+      const plan = plans[i];
+      const semester = plan?.semesters.find((entry) => entry.id === plan.currentSemesterId);
+      if (!semester) throw new Error("Нет текущего учебного плана");
+      const ids = new Set(semester.disciplines.map((d) => d.subjectId));
+      groupSubjects.push(ids);
+      for (const d of semester.disciplines) {
+        expect(d.hours.lectures + d.hours.practice + d.hours.independent).toBe(d.credits * 36);
+        expect(d.grade).not.toBeNull();
+      }
+      const res = await app.request(routes.me.schedule.path, { headers: { cookie: cookies[who] } });
+      const { lessons } = WeekScheduleSchema.parse(await res.json());
+      expect(lessons.length).toBeGreaterThan(0);
+      for (const lesson of lessons)
+        expect(lesson.subjectId && ids.has(lesson.subjectId)).toBe(true);
+    }
+    expect([...(groupSubjects[0] ?? [])].some((id) => groupSubjects[1]?.has(id))).toBe(false);
+  });
+
+  it("дисциплина доступна до появления оценок", async () => {
+    const [row] = await handle.db.select().from(schema.grades).limit(1);
+    if (!row) throw new Error("Нет демооценки");
+    await handle.db.delete(schema.grades).where(eq(schema.grades.id, row.id));
+    try {
+      const all = (await Promise.all([lookup("student"), lookup("student2")]))
+        .flatMap((plan) => plan.semesters)
+        .find(
+          (semester) =>
+            semester.id === row.semesterId &&
+            semester.disciplines.some((d) => d.subjectId === row.subjectId),
+        );
+      expect(all?.disciplines.find((d) => d.subjectId === row.subjectId)?.grade).toBeNull();
+    } finally {
+      await handle.db.insert(schema.grades).values(row);
+    }
+  });
+});
 
 const discipline = (over: Partial<DisciplineGrade>): DisciplineGrade => ({
   id: "00000000-0000-4000-8000-000000000000",
