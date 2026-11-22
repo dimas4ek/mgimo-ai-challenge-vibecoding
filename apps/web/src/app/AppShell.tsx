@@ -24,6 +24,7 @@ import { homeOf } from "./guards";
 import { morePaths, paths } from "./paths";
 import { StudentTips } from "./StudentTips";
 import { useTheme } from "./theme";
+import { useCyberGlitch } from "./useCyberGlitch";
 
 export type NavItem = {
   to: string;
@@ -156,11 +157,13 @@ function TabLink({
  */
 export function AppShell() {
   const me = useMe();
+  const cyberGlitch = useCyberGlitch();
   const role = me.data?.role;
   const nav = navFor(role);
   const home = role ? homeOf(role) : paths.home;
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[16rem_1fr]">
+      {cyberGlitch && <div className="cyber-glitch" aria-hidden="true" />}
       <a
         href="#main"
         className="sr-only z-50 rounded-md bg-surface px-4 py-2 focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
