@@ -33,13 +33,21 @@ export const DiscussionTopicSummarySchema = z.object({
 });
 export type DiscussionTopicSummary = z.infer<typeof DiscussionTopicSummarySchema>;
 
-/** `id` сохраняется при чтении и используется для жалобы на комментарий. */
-export const DiscussionCommentSchema = z.object({
+export const DiscussionCommentVisibilitySchema = z.enum(["visible", "hidden"]);
+export type DiscussionCommentVisibility = z.infer<typeof DiscussionCommentVisibilitySchema>;
+
+const commentFields = z.object({
   id: IdSchema,
-  body,
   author: DiscussionAuthorSchema,
   createdAt: IsoDateTimeSchema,
 });
+
+/** `id` остаётся прежним после модерации; скрытый текст никогда не входит в студенческий DTO. */
+export const DiscussionCommentSchema = z.union([
+  // Уже опубликованные ответы API без признака видимости считаются видимыми.
+  commentFields.extend({ visibility: z.literal("visible").optional(), body }),
+  commentFields.extend({ visibility: z.literal("hidden"), body: z.null() }),
+]);
 export type DiscussionComment = z.infer<typeof DiscussionCommentSchema>;
 
 /** Комментарии по времени создания. Чужая кафедра получает 404 на чтение и ответ. */

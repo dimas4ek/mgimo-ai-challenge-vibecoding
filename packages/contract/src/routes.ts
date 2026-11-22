@@ -3,6 +3,13 @@ import { LoginInputSchema, MeSchema } from "./auth";
 import { CertificateSchema, CertificateVerificationSchema } from "./certificates";
 import { OkSchema } from "./common";
 import {
+  CreateDiscussionReportInputSchema,
+  DiscussionReportReceiptSchema,
+  ResolveDiscussionReportInputSchema,
+  StaffDiscussionReportSchema,
+  StaffDiscussionReportSummarySchema,
+} from "./discussion-reports";
+import {
   CreateDiscussionCommentInputSchema,
   CreateDiscussionInputSchema,
   DiscussionCommentSchema,
@@ -99,10 +106,34 @@ export const routes = {
         body: CreateDiscussionCommentInputSchema,
         response: DiscussionCommentSchema,
       },
+      report: {
+        method: "POST",
+        path: "/api/me/discussions/comments/:commentId/reports",
+        body: CreateDiscussionReportInputSchema,
+        response: DiscussionReportReceiptSchema,
+      },
     },
   },
 
   staff: {
+    discussionReports: {
+      list: {
+        method: "GET",
+        path: "/api/staff/discussion-reports",
+        response: z.array(StaffDiscussionReportSummarySchema),
+      },
+      get: {
+        method: "GET",
+        path: "/api/staff/discussion-reports/:id",
+        response: StaffDiscussionReportSchema,
+      },
+      resolve: {
+        method: "POST",
+        path: "/api/staff/discussion-reports/:id/decision",
+        body: ResolveDiscussionReportInputSchema,
+        response: StaffDiscussionReportSchema,
+      },
+    },
     requests: {
       list: {
         method: "GET",
