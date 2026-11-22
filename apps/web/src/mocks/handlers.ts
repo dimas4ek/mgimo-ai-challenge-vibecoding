@@ -12,7 +12,11 @@ import {
   type StaffRequestItem,
 } from "@aihs/contract";
 import { type HttpHandler, HttpResponse, http } from "msw";
-import { mockStudent2Curriculum, mockStudentCurriculum } from "./curriculum";
+import {
+  mockCurriculumSchedule,
+  mockStudent2Curriculum,
+  mockStudentCurriculum,
+} from "./curriculum";
 import { mockDiscussions } from "./discussions";
 
 /**
@@ -98,7 +102,9 @@ export const handlers: HttpHandler[] = [
   http.get(routes.me.profile.path, () => requireStudent() ?? HttpResponse.json(fixtures.profile)),
   http.get(
     routes.me.schedule.path,
-    () => requireStudent() ?? HttpResponse.json(fixtures.weekSchedule),
+    () =>
+      requireStudent() ??
+      HttpResponse.json(mockCurriculumSchedule(db.me?.id === fixtures.me.student2.id)),
   ),
   http.get(routes.me.grades.path, () => requireStudent() ?? HttpResponse.json(fixtures.grades)),
   http.get(

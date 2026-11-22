@@ -1,4 +1,9 @@
-import { CurriculumSchema, type DisciplineGrade, fixtures } from "@aihs/contract";
+import {
+  CurriculumSchema,
+  type DisciplineGrade,
+  fixtures,
+  type WeekSchedule,
+} from "@aihs/contract";
 
 const currentId = "26000000-0000-4000-8000-000000000001";
 const pastId = "26000000-0000-4000-8000-000000000002";
@@ -68,3 +73,41 @@ export const mockStudent2Curriculum = CurriculumSchema.parse({
     },
   ],
 });
+
+export function mockCurriculumSchedule(isStudent2: boolean): WeekSchedule {
+  const schedule = fixtures.weekSchedule;
+  if (isStudent2) {
+    const lesson = schedule.lessons[0];
+    const entry = mockStudent2Curriculum.semesters[0]?.disciplines[0];
+    return {
+      ...schedule,
+      lessons:
+        lesson && entry
+          ? [
+              {
+                ...lesson,
+                subjectId: entry.subjectId,
+                subject: entry.subject,
+                teacher: entry.teacher,
+                change: null,
+              },
+            ]
+          : [],
+    };
+  }
+
+  const current = mockStudentCurriculum.semesters[0]?.disciplines ?? [];
+  return {
+    ...schedule,
+    lessons: schedule.lessons.map((lesson) => {
+      const planName =
+        lesson.subject === "Теория вероятностей и статистика"
+          ? "Теория вероятностей и статистика, ч. 2"
+          : lesson.subject;
+      return {
+        ...lesson,
+        subjectId: current.find((entry) => entry.subject === planName)?.subjectId,
+      };
+    }),
+  };
+}
