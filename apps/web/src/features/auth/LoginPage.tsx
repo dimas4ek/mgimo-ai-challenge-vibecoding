@@ -53,10 +53,10 @@ export function LoginPage() {
   return (
     <main
       id="main"
-      className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center gap-6 px-4 py-10"
+      className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center gap-6 px-4 py-10 lg:max-w-lg"
     >
       <Logo className="self-center" />
-      <Card>
+      <Card className="lg:p-8">
         <h1 className="sr-only">Вход</h1>
         <CardTitle as="h2">Вход в кабинет</CardTitle>
         <CardDescription className="mt-1">
