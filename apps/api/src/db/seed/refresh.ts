@@ -4,7 +4,7 @@ import type { Db } from "../client";
 import * as schema from "../schema";
 import { buildSeedData } from "./data";
 import { seed, seedAccounts } from "./index";
-import { getSeededAt, setSeededAt, withSeedLock } from "./seeded-at";
+import { DEMO_SCHEDULE_VERSION, getSeedMetadata, setSeededAt, withSeedLock } from "./seeded-at";
 
 /** Раз в час проверяем, не началась ли новая неделя по Москве. */
 export const REFRESH_INTERVAL_MS = 60 * 60 * 1000;
@@ -12,18 +12,22 @@ export const REFRESH_INTERVAL_MS = 60 * 60 * 1000;
 const weekOf = (at: Date) => mondayOf(moscowDate(at));
 
 /**
- * Обновляет расписание и уведомления об изменениях при смене недели по Москве.
+ * Обновляет расписание и уведомления при смене недели по Москве или версии шаблонов.
  * Сохраняет заявки, их историю, выданные справки и уведомления по заявкам.
  * На пустой базе создаёт исходные демо-данные. Возвращает `true`, если данные обновились.
  */
 export async function refreshWeeklySchedule(db: Db, now: Date): Promise<boolean> {
   return withSeedLock(db, async (tx) => {
-    const seededAt = await getSeededAt(tx);
-    if (seededAt && weekOf(seededAt) >= weekOf(now)) return false;
+    const metadata = await getSeedMetadata(tx);
+    const currentWeek = weekOf(now);
+    const seededWeek = metadata ? weekOf(metadata.seededAt) : null;
+    const sameWeek = seededWeek === currentWeek;
+    if (seededWeek && seededWeek > currentWeek) return false;
+    if (sameWeek && metadata && metadata.scheduleVersion >= DEMO_SCHEDULE_VERSION) return false;
 
     const data = buildSeedData(now, seedAccounts);
     const userIds = data.users.map((user) => user.id);
-    if (!seededAt) {
+    if (!metadata) {
       // У старой базы может не быть отметки, хотя демо-аккаунты уже существуют.
       const [existing] = await tx
         .select({ id: schema.users.id })
@@ -46,17 +50,25 @@ export async function refreshWeeklySchedule(db: Db, now: Date): Promise<boolean>
     await tx.insert(schema.lessons).values(data.lessons);
     await tx.insert(schema.lessonChanges).values(data.lessonChanges);
 
-    await tx
+    const previousNotifications = await tx
       .delete(schema.notifications)
       .where(
         and(
           eq(schema.notifications.type, "schedule_change"),
           inArray(schema.notifications.userId, userIds),
         ),
+      )
+      .returning({ id: schema.notifications.id, read: schema.notifications.read });
+    // У уведомлений идентификаторы зависят от относительной недели и переиспользуются после понедельника.
+    const readIds = new Set(
+      sameWeek ? previousNotifications.filter((notice) => notice.read).map(({ id }) => id) : [],
+    );
+    const notifications = data.notifications
+      .filter((notification) => notification.type === "schedule_change")
+      .map((notification) =>
+        readIds.has(notification.id ?? "") ? { ...notification, read: true } : notification,
       );
-    await tx
-      .insert(schema.notifications)
-      .values(data.notifications.filter((notification) => notification.type === "schedule_change"));
+    await tx.insert(schema.notifications).values(notifications);
     await setSeededAt(tx, now);
     return true;
   });

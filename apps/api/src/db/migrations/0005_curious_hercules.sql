@@ -1,0 +1,1 @@
+ALTER TABLE "seed_meta" ADD COLUMN "schedule_version" integer DEFAULT 1 NOT NULL;

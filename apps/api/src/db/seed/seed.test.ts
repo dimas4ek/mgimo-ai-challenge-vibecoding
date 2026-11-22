@@ -1,6 +1,7 @@
 import { verify } from "@node-rs/argon2";
 import { and, asc, eq, gte, lte } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { addDays, mondayOf } from "../../lib/moscow-time";
 import { createDb, type Db, type DbHandle } from "../client";
 import * as schema from "../schema";
 import { buildSeedData } from "./data";
@@ -117,7 +118,11 @@ describe("seed", () => {
   it("о каждом изменении расписания текущей и следующей недели студент получает уведомление", async () => {
     for (const s of await db.select().from(schema.students)) {
       const changes = await db
-        .select({ note: schema.lessonChanges.note })
+        .select({
+          date: schema.lessons.date,
+          start: schema.lessons.start,
+          note: schema.lessonChanges.note,
+        })
         .from(schema.lessonChanges)
         .innerJoin(schema.lessons, eq(schema.lessons.id, schema.lessonChanges.lessonId))
         .where(
@@ -139,12 +144,44 @@ describe("seed", () => {
       expect(changes.length).toBeGreaterThanOrEqual(3);
       expect(notes).toHaveLength(changes.length);
       for (const c of changes) {
-        expect(notes.some((n) => n.body.includes(c.note))).toBe(true);
+        const notification = notes.find((n) => n.body.includes(c.note));
+        expect(notification?.link).toBe(`/schedule?week=${mondayOf(c.date)}`);
+        const date = `${c.date.slice(8, 10)}.${c.date.slice(5, 7)}`;
+        expect(notification?.body).toContain(`${date} в ${c.start}`);
       }
       for (const n of notes) {
         expect(n.link).toMatch(/^\/schedule\?week=2026-11-(16|23)$/);
         expect(n.createdAt.getTime()).toBeLessThanOrEqual(NOW.getTime());
       }
+    }
+  });
+
+  it("при смене года и повторном засеве календарная неделя сохраняет базовые пары", () => {
+    const monday = "2026-12-28";
+    const nextMonday = addDays(monday, 7);
+    const before = buildSeedData(new Date("2026-12-30T09:00:00Z"), seedAccounts);
+    const after = buildSeedData(new Date("2027-01-04T09:00:00Z"), seedAccounts);
+
+    function baseSlots(data: typeof before, groupId: string, week: string) {
+      const changes = new Map(data.lessonChanges.map((change) => [change.lessonId, change]));
+      const end = addDays(week, 6);
+      return data.lessons
+        .filter((lesson) => lesson.groupId === groupId && lesson.date >= week && lesson.date <= end)
+        .map((lesson) => {
+          const change = changes.get(lesson.id ?? "");
+          const date = change?.originalDate ?? lesson.date;
+          const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
+          return `${weekday} ${change?.originalStart ?? lesson.start} ${lesson.subjectId}`;
+        })
+        .sort();
+    }
+
+    for (const { id } of before.groups) {
+      const current = baseSlots(before, id, monday);
+      const next = baseSlots(before, id, nextMonday);
+      expect(current).toEqual(baseSlots(after, id, monday));
+      expect(next).toEqual(baseSlots(after, id, nextMonday));
+      expect(current).not.toEqual(next);
     }
   });
 

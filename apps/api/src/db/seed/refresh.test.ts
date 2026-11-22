@@ -84,6 +84,47 @@ describe("refreshDemoDataIfStale", () => {
     expect(await getSeededAt(handle.db)).toEqual(SEEDED);
   });
 
+  it("смена версии в той же неделе сохраняет заявку и отметку о прочтении", {
+    timeout: 60_000,
+  }, async () => {
+    await seed(handle.db, { now: SEEDED });
+    const { id, groupId, userId } = await student();
+    const [created] = await handle.db
+      .insert(schema.requests)
+      .values({ studentId: id, type: "transcript", createdAt: SEEDED, updatedAt: SEEDED })
+      .returning();
+    await handle.db.update(schema.seedMeta).set({ scheduleVersion: 1 });
+    await handle.db.delete(schema.lessons).where(eq(schema.lessons.groupId, groupId));
+    const [notice] = await handle.db
+      .update(schema.notifications)
+      .set({ read: true })
+      .where(
+        and(
+          eq(schema.notifications.userId, userId),
+          eq(schema.notifications.type, "schedule_change"),
+          eq(schema.notifications.link, "/schedule?week=2026-11-23"),
+          eq(schema.notifications.read, false),
+        ),
+      )
+      .returning({ id: schema.notifications.id });
+    if (!notice) throw new Error("нет непрочитанного уведомления о будущей паре в сиде");
+
+    expect(await refreshDemoDataIfStale(handle.db, SAME_WEEK)).toBe(true);
+    expect(await getSeededAt(handle.db)).toEqual(SAME_WEEK);
+    expect(await refreshDemoDataIfStale(handle.db, SAME_WEEK)).toBe(false);
+    expect(await changesInWeekOf(groupId, SAME_WEEK)).toHaveLength(3);
+    const [still] = await handle.db
+      .select()
+      .from(schema.requests)
+      .where(eq(schema.requests.id, created?.id ?? ""));
+    expect(still).toEqual(created);
+    const [sameNotice] = await handle.db
+      .select({ read: schema.notifications.read })
+      .from(schema.notifications)
+      .where(eq(schema.notifications.id, notice.id));
+    expect(sameNotice?.read).toBe(true);
+  });
+
   it("новая неделя — в расписании снова перенос, замена и отмена, уведомления совпадают", {
     timeout: 60_000,
   }, async () => {

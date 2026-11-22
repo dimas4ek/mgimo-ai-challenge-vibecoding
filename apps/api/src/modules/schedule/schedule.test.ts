@@ -1,4 +1,10 @@
-import { ApiErrorSchema, ProfileSchema, routes, WeekScheduleSchema } from "@aihs/contract";
+import {
+  ApiErrorSchema,
+  ProfileSchema,
+  routes,
+  type WeekSchedule,
+  WeekScheduleSchema,
+} from "@aihs/contract";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../../app";
 import { createDb, type DbHandle } from "../../db/client";
@@ -41,6 +47,16 @@ const schedule = async (who: keyof typeof cookies, week?: string) => {
   expect(res.status).toBe(200);
   return WeekScheduleSchema.parse(await res.json());
 };
+
+/** Состав базовой недели без календарных дат и разовых переносов. */
+const baseSlots = (week: WeekSchedule) =>
+  week.lessons
+    .map((lesson) => {
+      const date = lesson.change?.originalDate ?? lesson.date;
+      const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
+      return `${weekday} ${lesson.change?.originalStart ?? lesson.start} ${lesson.subject}`;
+    })
+    .sort();
 
 describe("GET /api/me/profile", () => {
   it("профиль своего студента; у двух студентов разные", async () => {
@@ -98,6 +114,21 @@ describe("GET /api/me/schedule", () => {
     expect(next.weekStart).toBe(addDays(MONDAY, 7));
     expect(next.lessons.every((l) => l.date >= next.weekStart)).toBe(true);
   });
+
+  it.each(["student", "student2"] as const)(
+    "у %s соседние недели различаются базовыми парами",
+    async (who) => {
+      const current = await schedule(who, MONDAY);
+      const next = await schedule(who, addDays(MONDAY, 7));
+      expect(current.lessons.length).toBeGreaterThan(0);
+      expect(next.lessons.length).toBeGreaterThan(0);
+      expect(baseSlots(current)).not.toEqual(baseSlots(next));
+      for (const week of [current, next]) {
+        const slots = new Set(week.lessons.map((lesson) => `${lesson.date} ${lesson.start}`));
+        expect(slots.size).toBe(week.lessons.length);
+      }
+    },
+  );
 
   it.each(["19.11.2026", "9999-12-27", "1899-01-02"])(
     "невалидный week (%s) → 400 validation",
