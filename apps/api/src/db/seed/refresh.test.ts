@@ -1,5 +1,14 @@
+import {
+  buildPath,
+  CertificateSchema,
+  CertificateVerificationSchema,
+  NotificationListSchema,
+  RequestSchema,
+  routes,
+} from "@aihs/contract";
 import { and, eq, gte, lte } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createApp } from "../../app";
 import { addDays, mondayOf, moscowDate } from "../../lib/moscow-time";
 import { createDb, type DbHandle } from "../client";
 import * as schema from "../schema";
@@ -75,7 +84,7 @@ describe("refreshDemoDataIfStale", () => {
     expect(await getSeededAt(handle.db)).toEqual(SEEDED);
   });
 
-  it("новая неделя — пересев: в текущей неделе снова перенос, замена и отмена, уведомления совпадают", {
+  it("новая неделя — в расписании снова перенос, замена и отмена, уведомления совпадают", {
     timeout: 60_000,
   }, async () => {
     await seed(handle.db, { now: SEEDED });
@@ -111,6 +120,107 @@ describe("refreshDemoDataIfStale", () => {
     ).map((r) => r.body);
     expect(bodies).toHaveLength(allNotes.length);
     for (const note of allNotes) expect(bodies.some((b) => b.includes(note))).toBe(true);
+  });
+
+  it("после полуночи МСК заявка, история, уведомление и выданная справка с тем же QR доступны через API", {
+    timeout: 60_000,
+  }, async () => {
+    await seed(handle.db, { now: SEEDED });
+    let now = SAME_WEEK;
+    const app = createApp({ db: handle.db, now: () => now });
+    const post = (path: string, body: object, cookie?: string) =>
+      app.request(path, {
+        method: "POST",
+        headers: { "content-type": "application/json", ...(cookie ? { cookie } : {}) },
+        body: JSON.stringify(body),
+      });
+    const login = async (account: keyof typeof seedAccounts) => {
+      const response = await post(routes.auth.login.path, seedAccounts[account]);
+      expect(response.status).toBe(200);
+      const cookie = response.headers.get("set-cookie")?.split(";")[0];
+      if (!cookie) throw new Error("API не выдал cookie сессии");
+      return cookie;
+    };
+    const cookie = await login("student");
+    const otherCookie = await login("student2");
+    const staff = await login("staff");
+    const createRequest = async (owner: string) => {
+      const response = await post(routes.me.requests.create.path, { type: "transcript" }, owner);
+      expect(response.status).toBe(201);
+      return RequestSchema.parse(await response.json());
+    };
+    const { id } = await createRequest(cookie);
+    const other = await createRequest(otherCookie);
+    now = new Date(SAME_WEEK.getTime() + 1000);
+    const ready = await post(
+      buildPath(routes.staff.requests.changeStatus.path, { id }),
+      { status: "ready" },
+      staff,
+    );
+    expect(ready.status).toBe(200);
+
+    const requestPath = buildPath(routes.me.requests.get.path, { id });
+    const certificatePath = buildPath(routes.me.certificates.get.path, { requestId: id });
+    const get = (path: string) => app.request(path, { headers: { cookie } });
+    const readUserData = async () => {
+      const request = RequestSchema.parse(await (await get(requestPath)).json());
+      const certificate = CertificateSchema.parse(await (await get(certificatePath)).json());
+      const { items } = NotificationListSchema.parse(
+        await (await get(routes.me.notifications.list.path)).json(),
+      );
+      const notification = items.find((item) => item.link === `/requests/${id}`);
+      return { request, certificate, notification };
+    };
+
+    const before = await readUserData();
+    expect(before.request.history.map((entry) => entry.status)).toEqual(["submitted", "ready"]);
+    expect(before.notification).toMatchObject({ type: "request" });
+    const qrPath = buildPath(routes.public.certificates.verify.path, {
+      token: before.certificate.token,
+    });
+    const qrBefore = CertificateVerificationSchema.parse(await (await app.request(qrPath)).json());
+
+    now = NEXT_WEEK;
+    expect(await refreshDemoDataIfStale(handle.db, now)).toBe(true);
+    expect(await refreshDemoDataIfStale(handle.db, now)).toBe(false);
+    expect(await readUserData()).toEqual(before);
+    expect(CertificateVerificationSchema.parse(await (await app.request(qrPath)).json())).toEqual(
+      qrBefore,
+    );
+
+    const reset = await app.request(routes.me.demoReset.path, {
+      method: "POST",
+      headers: { cookie },
+    });
+    expect(reset.status).toBe(200);
+    expect((await get(requestPath)).status).toBe(404);
+    expect((await app.request(qrPath)).status).toBe(404);
+    const otherResponse = await app.request(
+      buildPath(routes.me.requests.get.path, { id: other.id }),
+      {
+        headers: { cookie: otherCookie },
+      },
+    );
+    expect(RequestSchema.parse(await otherResponse.json())).toEqual(other);
+  });
+
+  it("старая база без отметки засева сохраняет заявки при обновлении", {
+    timeout: 60_000,
+  }, async () => {
+    await seed(handle.db, { now: SEEDED });
+    await handle.db.delete(schema.seedMeta);
+    const { id } = await student();
+    const [created] = await handle.db
+      .insert(schema.requests)
+      .values({ studentId: id, type: "transcript", createdAt: SEEDED, updatedAt: SEEDED })
+      .returning();
+    expect(await refreshDemoDataIfStale(handle.db, NEXT_WEEK)).toBe(true);
+    expect(await getSeededAt(handle.db)).toEqual(NEXT_WEEK);
+    const [still] = await handle.db
+      .select()
+      .from(schema.requests)
+      .where(eq(schema.requests.id, created?.id ?? ""));
+    expect(still).toEqual(created);
   });
 
   it("ошибка пересева логируется, наружу не выходит", async () => {

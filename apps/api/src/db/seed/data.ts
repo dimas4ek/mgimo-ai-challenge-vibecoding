@@ -509,7 +509,7 @@ export type SeedUser = Omit<Insert<typeof schema.users>, "passwordHash"> & {
 export interface SeedData {
   users: SeedUser[];
   faculties: Insert<typeof schema.faculties>[];
-  groups: Insert<typeof schema.groups>[];
+  groups: (Insert<typeof schema.groups> & { id: string })[];
   students: Insert<typeof schema.students>[];
   teachers: Insert<typeof schema.teachers>[];
   subjects: Insert<typeof schema.subjects>[];
