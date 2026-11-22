@@ -48,6 +48,13 @@ const SERVER_SNAPSHOT: Snapshot = { preference: "system", theme: "light" };
 
 function subscribe(listener: () => void) {
   listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+/** Применяем тему и следим за её источниками независимо от открытого экрана. */
+export function startThemeSync() {
   const mq = window.matchMedia("(prefers-color-scheme: dark)");
   const onSystem = () => {
     if (getSnapshot().preference === "system") commit(compute("system"));
@@ -58,8 +65,8 @@ function subscribe(listener: () => void) {
   };
   mq.addEventListener("change", onSystem);
   window.addEventListener("storage", onStorage);
+  commit(compute(readThemePreference()));
   return () => {
-    listeners.delete(listener);
     mq.removeEventListener("change", onSystem);
     window.removeEventListener("storage", onStorage);
   };
